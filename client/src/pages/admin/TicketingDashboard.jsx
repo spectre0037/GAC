@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import AdminLayout from "@/components/admin/AdminLayout";
 import RegistrationDetailModal from "@/components/admin/RegistrationDetailModal";
 
@@ -31,16 +31,23 @@ function CopyButton({ value }) {
 
   if (!value) return null;
 
+  async function handleCopy(e) {
+    e.stopPropagation();
+
+    try {
+      await navigator.clipboard.writeText(String(value));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Ignore clipboard errors
+    }
+  }
+
   return (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(value);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
-      }}
-      className="rounded-lg px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 transition-colors hover:bg-[#EBF2F2] hover:text-[#3D6BB4]"
+      onClick={handleCopy}
+      className="shrink-0 rounded-lg px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 transition-colors hover:bg-[#EBF2F2] hover:text-[#3D6BB4]"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -56,27 +63,27 @@ function GenderList({
   onRejectReg,
 }) {
   return (
-    <div className="flex-1">
+    <div className="min-w-0 flex-1">
       {/* Section Header */}
-      <div className="mb-3 flex items-center justify-between">
-        <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
             Registrations
           </div>
 
-          <h3 className="mt-1 text-base font-semibold text-[#1A2B48]">
+          <h3 className="mt-1 truncate text-base font-semibold text-[#1A2B48]">
             {title}
           </h3>
         </div>
 
-        <span className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
+        <span className="shrink-0 rounded-full bg-[#EBF2F2] px-2.5 py-1.5 text-[10px] font-medium text-slate-500 sm:px-3">
           {registrations.length}{" "}
           {registrations.length === 1 ? "person" : "people"}
         </span>
       </div>
 
       {/* Registration Container */}
-      <div className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
+      <div className="overflow-hidden rounded-[20px] bg-white shadow-sm ring-1 ring-slate-200/70 sm:rounded-[24px]">
         {registrations.length === 0 ? (
           <div className="px-5 py-10 text-center">
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#EBF2F2] text-sm text-[#3D6BB4]">
@@ -96,23 +103,25 @@ function GenderList({
             {registrations.map((reg) => (
               <div
                 key={reg.id}
-                className="cursor-pointer border-b border-slate-100 px-5 py-4 last:border-0 transition-colors hover:bg-[#F7FAFA]"
+                className="cursor-pointer border-b border-slate-100 px-3.5 py-4 transition-colors last:border-0 hover:bg-[#F7FAFA] sm:px-5"
                 onClick={() => onOpen(reg)}
               >
                 {/* Name + Status */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 items-start justify-between gap-2.5 sm:gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-xs font-semibold text-[#3D6BB4]">
-                      {reg.fullName?.charAt(0)?.toUpperCase()}
+                      {reg.fullName?.charAt(0)?.toUpperCase() || "?"}
                     </div>
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-[#1A2B48]">
-                        {reg.fullName}
+                        {reg.fullName || "Unnamed Participant"}
                       </p>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
-                        <span>{reg.regNo || "No Reg. No."}</span>
+                      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-400">
+                        <span className="max-w-[130px] truncate sm:max-w-none">
+                          {reg.regNo || "No Reg. No."}
+                        </span>
 
                         {reg.regNo && (
                           <CopyButton value={reg.regNo} />
@@ -120,7 +129,9 @@ function GenderList({
 
                         <span className="text-slate-300">·</span>
 
-                        <span>{reg.whatsappNumber}</span>
+                        <span className="max-w-[120px] truncate sm:max-w-none">
+                          {reg.whatsappNumber || "No number"}
+                        </span>
 
                         <CopyButton value={reg.whatsappNumber} />
                       </div>
@@ -128,7 +139,7 @@ function GenderList({
                   </div>
 
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                    className={`max-w-[90px] shrink-0 truncate rounded-full px-2 py-1 text-center text-[8px] font-semibold uppercase tracking-[0.08em] sm:max-w-none sm:px-2.5 sm:text-[9px] ${
                       STATUS_STYLES[reg.status] ||
                       "bg-slate-100 text-slate-600"
                     }`}
@@ -140,7 +151,7 @@ function GenderList({
                 {/* Pending Actions */}
                 {reg.status === "pending" && (
                   <div
-                    className="mt-4 flex flex-wrap gap-2"
+                    className="mt-3 flex flex-wrap gap-2 sm:mt-4"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button
@@ -188,6 +199,7 @@ export default function TicketingDashboard() {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualForm, setManualForm] = useState(emptyManualForm);
   const [selectedReg, setSelectedReg] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -195,6 +207,7 @@ export default function TicketingDashboard() {
 
   async function fetchAll() {
     setError("");
+    setLoading(true);
 
     try {
       const [regsRes, summaryRes] = await Promise.all([
@@ -204,13 +217,15 @@ export default function TicketingDashboard() {
         api.get(`/registrations/events/${eventId}/analytics`),
       ]);
 
-      setRegistrations(regsRes.data.registrations);
-      setSummary(summaryRes.data.summary);
+      setRegistrations(regsRes.data.registrations || []);
+      setSummary(summaryRes.data.summary || null);
     } catch (err) {
       setError(
         err.response?.data?.message ||
           "Failed to load registrations."
       );
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -219,7 +234,7 @@ export default function TicketingDashboard() {
 
     try {
       await api.patch(`/registrations/${regId}/approve`);
-      fetchAll();
+      await fetchAll();
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -233,17 +248,17 @@ export default function TicketingDashboard() {
       "Reason for rejecting this payment screenshot:"
     );
 
-    if (!reason) return;
+    if (!reason?.trim()) return;
 
     setError("");
 
     try {
       await api.patch(
         `/registrations/${regId}/reject-payment`,
-        { reason }
+        { reason: reason.trim() }
       );
 
-      fetchAll();
+      await fetchAll();
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -257,17 +272,17 @@ export default function TicketingDashboard() {
       "Reason for rejecting this registration entirely:"
     );
 
-    if (!reason) return;
+    if (!reason?.trim()) return;
 
     setError("");
 
     try {
       await api.patch(
         `/registrations/${regId}/reject`,
-        { reason }
+        { reason: reason.trim() }
       );
 
-      fetchAll();
+      await fetchAll();
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -286,9 +301,9 @@ export default function TicketingDashboard() {
         manualForm
       );
 
-      setManualForm(emptyManualForm);
+      setManualForm({ ...emptyManualForm });
       setShowManualForm(false);
-      fetchAll();
+      await fetchAll();
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -311,32 +326,31 @@ export default function TicketingDashboard() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen px-5 py-8 md:px-8 lg:px-12">
-        <div className="mx-auto max-w-7xl">
-
+      <div className="min-h-screen w-full overflow-x-hidden px-4 py-6 sm:px-5 sm:py-7 md:px-7 md:py-8 lg:px-10 xl:px-12">
+        <div className="mx-auto w-full max-w-7xl min-w-0">
           {/* =====================================================
               HEADER
           ===================================================== */}
-          <div className="mb-8">
+          <div className="mb-7 sm:mb-8">
             <Link
               to="/admin/events"
-              className="mb-5 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 transition-colors hover:text-[#3D6BB4]"
+              className="mb-4 inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 transition-colors hover:text-[#3D6BB4] sm:mb-5 sm:text-[10px]"
             >
               ← Back to Events
             </Link>
 
-            <div className="mb-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3D6BB4]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
+            <div className="mb-4 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#3D6BB4] sm:mb-5 sm:text-[10px]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3D6BB4]" />
               Event Administration
             </div>
 
-            <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#1A2B48] md:text-4xl">
+            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[#1A2B48] sm:text-3xl md:text-4xl">
                   Ticketing & Registrations
                 </h1>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm sm:leading-6">
                   Review participants, manage registration approvals,
                   and handle event ticketing.
                 </p>
@@ -347,7 +361,7 @@ export default function TicketingDashboard() {
                 onClick={() =>
                   setShowManualForm((p) => !p)
                 }
-                className="h-10 rounded-xl border-0 bg-white px-4 text-xs font-medium text-[#1A2B48] shadow-sm ring-1 ring-slate-200/70 hover:bg-[#F7FAFA]"
+                className="h-10 w-full shrink-0 rounded-xl border-0 bg-white px-4 text-xs font-medium text-[#1A2B48] shadow-sm ring-1 ring-slate-200/70 hover:bg-[#F7FAFA] sm:w-auto"
               >
                 {showManualForm
                   ? "Cancel"
@@ -360,12 +374,12 @@ export default function TicketingDashboard() {
               ERROR
           ===================================================== */}
           {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
+            <div className="mb-6 flex min-w-0 items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-3.5 py-3 sm:px-4">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-semibold text-red-600">
                 !
               </div>
 
-              <p className="text-sm text-red-700">
+              <p className="min-w-0 break-words text-xs leading-5 text-red-700 sm:text-sm">
                 {error}
               </p>
             </div>
@@ -375,9 +389,9 @@ export default function TicketingDashboard() {
               SUMMARY
           ===================================================== */}
           {summary && (
-            <section className="mb-8">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
+            <section className="mb-7 sm:mb-8">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                     Event Activity
                   </div>
@@ -387,12 +401,12 @@ export default function TicketingDashboard() {
                   </h2>
                 </div>
 
-                <span className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
+                <span className="shrink-0 rounded-full bg-[#EBF2F2] px-2.5 py-1.5 text-[10px] font-medium text-slate-500 sm:px-3">
                   {registrations.length} total
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
                 {Object.entries(summary).map(
                   ([key, value]) => {
                     const normalized =
@@ -408,11 +422,11 @@ export default function TicketingDashboard() {
                     return (
                       <Card
                         key={key}
-                        className="rounded-2xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70"
+                        className="min-w-0 rounded-2xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70"
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-3 sm:p-4">
                           <div
-                            className={`mb-4 flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold ${
+                            className={`mb-3 flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold sm:mb-4 ${
                               isSuccess
                                 ? "bg-emerald-50 text-emerald-600"
                                 : isWarning
@@ -423,11 +437,11 @@ export default function TicketingDashboard() {
                             •
                           </div>
 
-                          <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
+                          <p className="truncate text-xl font-semibold tracking-tight text-[#1A2B48] sm:text-2xl">
                             {value}
                           </p>
 
-                          <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          <p className="mt-1 break-words text-[8px] font-semibold uppercase leading-4 tracking-[0.1em] text-slate-400 sm:text-[9px] sm:tracking-[0.12em]">
                             {key.replace(/_/g, " ")}
                           </p>
                         </CardContent>
@@ -443,8 +457,8 @@ export default function TicketingDashboard() {
               MANUAL REGISTRATION FORM
           ===================================================== */}
           {showManualForm && (
-            <section className="mb-8 overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
-              <div className="border-b border-slate-100 px-5 py-5 md:px-7">
+            <section className="mb-7 overflow-hidden rounded-[20px] bg-white shadow-sm ring-1 ring-slate-200/70 sm:mb-8 sm:rounded-[24px]">
+              <div className="border-b border-slate-100 px-4 py-4 sm:px-5 sm:py-5 md:px-7">
                 <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                   Registration
                 </div>
@@ -453,17 +467,17 @@ export default function TicketingDashboard() {
                   Manually Add Registration
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-slate-400">
                   Add and approve a participant directly to this event.
                 </p>
               </div>
 
-              <div className="px-5 py-6 md:px-7">
+              <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-7">
                 <form
                   onSubmit={handleManualAdd}
                   className="grid grid-cols-1 gap-4 md:grid-cols-2"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Full Name
                     </label>
@@ -478,17 +492,17 @@ export default function TicketingDashboard() {
                         }))
                       }
                       required
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Gender
                     </label>
 
                     <select
-                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] px-3 text-sm text-[#1A2B48] outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full min-w-0 rounded-xl border-0 bg-[#F4F7F7] px-3 text-sm text-[#1A2B48] outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-[#3D6BB4]"
                       value={manualForm.gender}
                       onChange={(e) =>
                         setManualForm((p) => ({
@@ -504,7 +518,7 @@ export default function TicketingDashboard() {
                     </select>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Registration Number
                     </label>
@@ -518,11 +532,11 @@ export default function TicketingDashboard() {
                           regNo: e.target.value,
                         }))
                       }
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       WhatsApp Number
                     </label>
@@ -537,11 +551,11 @@ export default function TicketingDashboard() {
                         }))
                       }
                       required
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Group Name
                     </label>
@@ -555,20 +569,18 @@ export default function TicketingDashboard() {
                           groupName: e.target.value,
                         }))
                       }
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Emergency Contact Name
                     </label>
 
                     <Input
                       placeholder="Contact name"
-                      value={
-                        manualForm.emergencyContactName
-                      }
+                      value={manualForm.emergencyContactName}
                       onChange={(e) =>
                         setManualForm((p) => ({
                           ...p,
@@ -577,20 +589,18 @@ export default function TicketingDashboard() {
                         }))
                       }
                       required
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Emergency Contact Number
                     </label>
 
                     <Input
                       placeholder="Contact number"
-                      value={
-                        manualForm.emergencyContactNumber
-                      }
+                      value={manualForm.emergencyContactNumber}
                       onChange={(e) =>
                         setManualForm((p) => ({
                           ...p,
@@ -599,11 +609,11 @@ export default function TicketingDashboard() {
                         }))
                       }
                       required
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="min-w-0 md:col-span-2">
                     <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
                       Medical Information
                     </label>
@@ -617,14 +627,15 @@ export default function TicketingDashboard() {
                           medicalInfo: e.target.value,
                         }))
                       }
-                      className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                      className="h-11 w-full rounded-xl border-0 bg-[#F4F7F7] text-sm text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
                     />
                   </div>
 
                   <div className="md:col-span-2">
                     <Button
                       type="submit"
-                      className="h-10 rounded-xl bg-[#1A2B48] px-5 text-xs font-medium text-white shadow-none hover:bg-[#253b5d]"
+                      disabled={loading}
+                      className="h-10 w-full rounded-xl bg-[#1A2B48] px-5 text-xs font-medium text-white shadow-none hover:bg-[#253b5d] sm:w-auto"
                     >
                       Add & Approve
                     </Button>
@@ -637,7 +648,7 @@ export default function TicketingDashboard() {
           {/* =====================================================
               REGISTRATION LISTS
           ===================================================== */}
-          <div className="flex flex-col gap-8 lg:flex-row">
+          <div className="flex min-w-0 flex-col gap-7 lg:flex-row lg:gap-6 xl:gap-8">
             <GenderList
               title="Boys"
               registrations={boys}
@@ -661,7 +672,7 @@ export default function TicketingDashboard() {
               UNSPECIFIED
           ===================================================== */}
           {unspecified.length > 0 && (
-            <div className="mt-8">
+            <div className="mt-7 sm:mt-8">
               <GenderList
                 title="Unspecified (legacy test data)"
                 registrations={unspecified}
@@ -676,7 +687,7 @@ export default function TicketingDashboard() {
           {/* =====================================================
               FOOTER
           ===================================================== */}
-          <div className="flex flex-col gap-1 px-2 py-6 text-[9px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1 px-1 py-6 text-[9px] leading-4 text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-2">
             <span>
               Registration changes take effect immediately.
             </span>

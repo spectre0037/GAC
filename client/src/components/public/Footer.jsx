@@ -2,23 +2,26 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-[#EBF2F2] px-4 pb-4 pt-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#1A2B48]">
+    <footer className="bg-[#EBF2F2] px-4 pb-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.5rem] bg-[#1A2B48] sm:rounded-[2rem]">
 
         {/* Main footer */}
-        <div className="relative px-7 py-12 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+        <div className="relative px-6 py-10 sm:px-10 sm:py-14 md:px-12 lg:px-14 lg:py-16">
 
           {/* Decorative circles */}
           <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full border border-[#88B3D8]/10" />
 
           <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full border border-[#88B3D8]/10" />
 
-          <div className="relative grid gap-12 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="relative grid gap-10 md:gap-12 lg:grid-cols-[1fr_auto] lg:items-end">
 
-            {/* Brand */}
-            <div>
+            {/* =====================================================
+                BRAND
+            ===================================================== */}
+            <div className="min-w-0">
+
               <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-bold text-[#1A2B48]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#1A2B48] sm:h-11 sm:w-11">
                   G
                 </div>
 
@@ -33,7 +36,7 @@ export default function Footer() {
                 </div>
               </div>
 
-              <h2 className="max-w-2xl text-4xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-5xl lg:text-6xl">
+              <h2 className="max-w-2xl text-4xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-5xl md:text-[3.5rem] lg:text-6xl">
                 Beyond
                 <br />
                 <span className="text-[#88B3D8]">the ordinary.</span>
@@ -45,13 +48,16 @@ export default function Footer() {
               </p>
             </div>
 
-            {/* Navigation */}
-            <div className="lg:min-w-[240px]">
-              <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#88B3D8]">
+            {/* =====================================================
+                NAVIGATION
+            ===================================================== */}
+            <div className="w-full lg:min-w-[240px] lg:max-w-[260px]">
+
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#88B3D8] sm:mb-5">
                 Explore
               </p>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col">
 
                 <Link
                   to="/events"
@@ -91,16 +97,20 @@ export default function Footer() {
           </div>
 
           {/* Divider */}
-          <div className="relative my-10 h-px bg-white/10" />
+          <div className="relative my-8 h-px bg-white/10 sm:my-10" />
 
-          {/* Bottom row */}
-          <div className="relative flex flex-col gap-5 text-xs sm:flex-row sm:items-center sm:justify-between">
+          {/* =====================================================
+              BOTTOM ROW
+          ===================================================== */}
+          <div className="relative flex flex-col gap-5 text-xs sm:gap-4 md:flex-row md:items-center md:justify-between">
 
+            {/* Copyright */}
             <p className="text-white/40">
               © {new Date().getFullYear()} GIKI Adventure Club
             </p>
 
-            <div className="flex items-center gap-3">
+            {/* Location */}
+            <div className="flex flex-wrap items-center gap-3">
               <span className="text-white/30">
                 GAC
               </span>
@@ -118,9 +128,12 @@ export default function Footer() {
               </span>
             </div>
 
+            {/* Decorative dots */}
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-[#88B3D8]" />
+
               <span className="h-1.5 w-1.5 rounded-full bg-[#5F97DF]" />
+
               <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
             </div>
 

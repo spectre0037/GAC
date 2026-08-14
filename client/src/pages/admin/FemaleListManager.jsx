@@ -53,8 +53,10 @@ const emptyForm = {
 function StatusBadge({ label, value }) {
   if (!value) {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-[#F4F7F7] px-3 py-2 text-xs text-slate-400 ring-1 ring-slate-200/70">
-        <span className="font-medium text-slate-500">{label}</span>
+      <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F4F7F7] px-3 py-2 text-xs text-slate-400 ring-1 ring-slate-200/70">
+        <span className="shrink-0 font-medium text-slate-500">
+          {label}
+        </span>
         <span>—</span>
       </div>
     );
@@ -68,11 +70,19 @@ function StatusBadge({ label, value }) {
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium capitalize ring-1 ${status.className}`}
+      className={`flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium capitalize ring-1 ${status.className}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-      <span className="text-slate-500">{label}</span>
-      <span>{status.label}</span>
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`}
+      />
+
+      <span className="shrink-0 text-slate-500">
+        {label}
+      </span>
+
+      <span className="truncate">
+        {status.label}
+      </span>
     </div>
   );
 }
@@ -104,11 +114,15 @@ export default function FemaleListManager() {
     setError('');
 
     try {
-      const { data } = await api.get(`/female-list/events/${eventId}`);
+      const { data } = await api.get(
+        `/female-list/events/${eventId}`
+      );
+
       setEntries(data.entries);
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Failed to load list.'
+        err.response?.data?.message ||
+          'Failed to load list.'
       );
     }
   }
@@ -119,17 +133,25 @@ export default function FemaleListManager() {
 
     try {
       if (editingId) {
-        await api.patch(`/female-list/${editingId}`, form);
+        await api.patch(
+          `/female-list/${editingId}`,
+          form
+        );
       } else {
-        await api.post(`/female-list/events/${eventId}`, form);
+        await api.post(
+          `/female-list/events/${eventId}`,
+          form
+        );
       }
 
       setForm(emptyForm);
       setEditingId(null);
+
       fetchEntries();
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Failed to save entry.'
+        err.response?.data?.message ||
+          'Failed to save entry.'
       );
     }
   }
@@ -139,8 +161,10 @@ export default function FemaleListManager() {
       fullName: entry.fullName,
       regNo: entry.regNo || '',
       contactNumber: entry.contactNumber,
-      emergencyContactName: entry.emergencyContactName,
-      emergencyContactNumber: entry.emergencyContactNumber,
+      emergencyContactName:
+        entry.emergencyContactName,
+      emergencyContactNumber:
+        entry.emergencyContactNumber,
     });
 
     setEditingId(entry.id);
@@ -152,14 +176,21 @@ export default function FemaleListManager() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Remove this entry from the list?')) return;
+    if (
+      !window.confirm(
+        'Remove this entry from the list?'
+      )
+    ) {
+      return;
+    }
 
     try {
       await api.delete(`/female-list/${id}`);
       fetchEntries();
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Failed to delete.'
+        err.response?.data?.message ||
+          'Failed to delete.'
       );
     }
   }
@@ -168,7 +199,11 @@ export default function FemaleListManager() {
     setError('');
 
     try {
-      await api.patch(`/female-list/${id}/status`, { status });
+      await api.patch(
+        `/female-list/${id}/status`,
+        { status }
+      );
+
       fetchEntries();
     } catch (err) {
       setError(
@@ -208,7 +243,10 @@ export default function FemaleListManager() {
         row
           .map(
             (cell) =>
-              `"${String(cell).replace(/"/g, '""')}"`
+              `"${String(cell).replace(
+                /"/g,
+                '""'
+              )}"`
           )
           .join(',')
       )
@@ -237,43 +275,44 @@ export default function FemaleListManager() {
 
   return (
     <AdminLayout>
-      <main className="min-h-screen bg-[#EBF2F2]">
-        <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="min-h-screen overflow-x-hidden bg-[#EBF2F2]">
+        <div className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-5 sm:py-8 md:px-8 lg:px-12 lg:py-12">
 
           {/* =====================================================
               PAGE HEADER
           ====================================================== */}
 
-          <section className="relative mb-8 overflow-hidden rounded-[24px] bg-[#1A2B48] shadow-sm">
-            {/* Decorative circles */}
+          <section className="relative mb-5 overflow-hidden rounded-[20px] bg-[#1A2B48] shadow-sm sm:mb-8 sm:rounded-[24px]">
+
             <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border border-[#88B3D8]/10" />
+
             <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full border border-[#88B3D8]/10" />
 
-            {/* Decorative mountain */}
-            <div className="pointer-events-none absolute bottom-0 right-0 h-[45%] w-[55%] bg-[#3D6BB4]/25 [clip-path:polygon(0_100%,20%_45%,36%_70%,54%_20%,70%_60%,85%_35%,100%_65%,100%_100%)]" />
+            <div className="pointer-events-none absolute bottom-0 right-0 h-[45%] w-[65%] bg-[#3D6BB4]/25 [clip-path:polygon(0_100%,20%_45%,36%_70%,54%_20%,70%_60%,85%_35%,100%_65%,100%_100%)]" />
 
-            <div className="relative flex flex-col gap-6 p-7 sm:p-9 lg:flex-row lg:items-end lg:justify-between lg:p-10">
-              <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#88B3D8]">
+            <div className="relative flex flex-col gap-6 p-5 sm:p-8 lg:flex-row lg:items-end lg:justify-between lg:p-10">
+
+              <div className="min-w-0">
+                <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#88B3D8] sm:text-[10px]">
                   Management
                 </p>
 
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                <h1 className="text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl md:text-4xl">
                   Female Students
                 </h1>
 
-                <p className="mt-3 max-w-xl text-sm leading-6 text-white/50">
+                <p className="mt-3 max-w-xl text-xs leading-5 text-white/50 sm:text-sm sm:leading-6">
                   Manage female student entries and monitor
                   registration, payment and confirmation status.
                 </p>
               </div>
 
-              <div className="relative z-10">
-                <p className="text-right text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
+              <div className="relative z-10 shrink-0 lg:text-right">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/30 sm:text-[10px]">
                   GAC
                 </p>
 
-                <p className="mt-2 text-right text-sm text-white/50">
+                <p className="mt-1 text-xs text-white/50 sm:mt-2 sm:text-sm">
                   Beyond the ordinary.
                 </p>
               </div>
@@ -281,33 +320,39 @@ export default function FemaleListManager() {
           </section>
 
           {/* =====================================================
-              EVENT SELECTOR + ACTIONS
+              EVENT SELECTOR
           ====================================================== */}
 
-          <section className="mb-6 rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-slate-200/70 sm:p-6">
+          <section className="mb-5 rounded-[20px] bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:mb-6 sm:rounded-[24px] sm:p-6">
+
             <div className="mb-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#688BB0]">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#688BB0] sm:text-[10px]">
                 Event
               </p>
 
-              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1A2B48]">
+              <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-[#1A2B48] sm:text-xl">
                 Select Adventure
               </h2>
             </div>
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <EventPicker
-                selectedEventId={eventId}
-                onSelect={setEventId}
-              />
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+              {/* Important: min-w-0 prevents EventPicker from
+                  forcing horizontal overflow */}
+              <div className="min-w-0 w-full lg:max-w-xl">
+                <EventPicker
+                  selectedEventId={eventId}
+                  onSelect={setEventId}
+                />
+              </div>
 
               {eventId && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap lg:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={downloadCsv}
-                    className="rounded-xl border-slate-200/70 bg-white text-[#1A2B48] shadow-sm hover:bg-[#F4F7F7]"
+                    className="h-10 w-full rounded-xl border-slate-200/70 bg-white text-[#1A2B48] shadow-sm hover:bg-[#F4F7F7] sm:w-auto"
                   >
                     Download CSV
                   </Button>
@@ -316,7 +361,7 @@ export default function FemaleListManager() {
                     variant="outline"
                     size="sm"
                     onClick={openPrintView}
-                    className="rounded-xl border-slate-200/70 bg-white text-[#1A2B48] shadow-sm hover:bg-[#F4F7F7]"
+                    className="h-10 w-full rounded-xl border-slate-200/70 bg-white text-[#1A2B48] shadow-sm hover:bg-[#F4F7F7] sm:w-auto"
                   >
                     Download PDF
                   </Button>
@@ -330,14 +375,18 @@ export default function FemaleListManager() {
           ====================================================== */}
 
           {error && (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200/70">
+            <div className="mb-5 flex items-start gap-3 rounded-2xl bg-red-50 p-3.5 text-xs text-red-700 ring-1 ring-red-200/70 sm:mb-6 sm:p-4 sm:text-sm">
+
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-[11px] font-bold">
                 !
               </span>
 
-              <div>
-                <p className="font-semibold">Something went wrong</p>
-                <p className="mt-0.5 text-red-600/80">
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  Something went wrong
+                </p>
+
+                <p className="mt-0.5 break-words text-red-600/80">
                   {error}
                 </p>
               </div>
@@ -349,39 +398,43 @@ export default function FemaleListManager() {
           ====================================================== */}
 
           {!eventId ? (
-            <section className="rounded-[24px] bg-white px-6 py-16 text-center shadow-sm ring-1 ring-slate-200/70">
+            <section className="rounded-[20px] bg-white px-5 py-14 text-center shadow-sm ring-1 ring-slate-200/70 sm:rounded-[24px] sm:px-6 sm:py-16">
+
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EBF2F2] text-[#3D6BB4]">
                 <span className="text-xl">↗</span>
               </div>
 
-              <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#688BB0]">
+              <p className="mt-5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#688BB0] sm:text-[10px]">
                 No event selected
               </p>
 
-              <h2 className="mt-2 text-xl font-semibold text-[#1A2B48]">
+              <h2 className="mt-2 text-lg font-semibold text-[#1A2B48] sm:text-xl">
                 Select an event to continue
               </h2>
 
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+              <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500 sm:text-sm sm:leading-6">
                 Choose an adventure from the selector above
                 to view its female student list.
               </p>
             </section>
           ) : (
             <>
+
               {/* =================================================
                   ADD / EDIT FORM
               ================================================== */}
 
               {canEdit && (
-                <section className="mb-8 rounded-[24px] bg-white p-6 shadow-sm ring-1 ring-slate-200/70 sm:p-8">
-                  <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#688BB0]">
+                <section className="mb-6 rounded-[20px] bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:mb-8 sm:rounded-[24px] sm:p-6 md:p-8">
+
+                  <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#688BB0] sm:text-[10px]">
                         Student Entry
                       </p>
 
-                      <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#1A2B48]">
+                      <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1A2B48] sm:text-2xl">
                         {editingId
                           ? 'Edit Entry'
                           : 'Add Female Student'}
@@ -389,7 +442,7 @@ export default function FemaleListManager() {
                     </div>
 
                     {editingId && (
-                      <span className="w-fit rounded-xl bg-amber-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-700 ring-1 ring-amber-200/70">
+                      <span className="w-fit shrink-0 rounded-xl bg-amber-50 px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-700 ring-1 ring-amber-200/70 sm:text-[10px]">
                         Editing
                       </span>
                     )}
@@ -397,20 +450,25 @@ export default function FemaleListManager() {
 
                   <form
                     onSubmit={handleSubmit}
-                    className="grid grid-cols-1 gap-5 md:grid-cols-2"
+                    className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2"
                   >
-                    <FormField label="Full Name" required>
+
+                    <FormField
+                      label="Full Name"
+                      required
+                    >
                       <Input
                         placeholder="Enter full name"
                         value={form.fullName}
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
-                            fullName: e.target.value,
+                            fullName:
+                              e.target.value,
                           }))
                         }
                         required
-                        className="h-12 rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10"
+                        className="h-11 w-full rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10 sm:h-12"
                       />
                     </FormField>
 
@@ -421,29 +479,34 @@ export default function FemaleListManager() {
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
-                            regNo: e.target.value,
+                            regNo:
+                              e.target.value,
                           }))
                         }
-                        className="h-12 rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10"
+                        className="h-11 w-full rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10 sm:h-12"
                       />
                     </FormField>
 
-                    <FormField label="Contact Number" required>
+                    <FormField
+                      label="Contact Number"
+                      required
+                    >
                       <Input
                         placeholder="Enter contact number"
                         value={form.contactNumber}
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
-                            contactNumber: e.target.value,
+                            contactNumber:
+                              e.target.value,
                           }))
                         }
                         required
-                        className="h-12 rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10"
+                        className="h-11 w-full rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10 sm:h-12"
                       />
                     </FormField>
 
-                    <div />
+                    <div className="hidden md:block" />
 
                     <FormField
                       label="Emergency Contact Name"
@@ -451,7 +514,9 @@ export default function FemaleListManager() {
                     >
                       <Input
                         placeholder="Enter emergency contact name"
-                        value={form.emergencyContactName}
+                        value={
+                          form.emergencyContactName
+                        }
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
@@ -460,7 +525,7 @@ export default function FemaleListManager() {
                           }))
                         }
                         required
-                        className="h-12 rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10"
+                        className="h-11 w-full rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10 sm:h-12"
                       />
                     </FormField>
 
@@ -470,7 +535,9 @@ export default function FemaleListManager() {
                     >
                       <Input
                         placeholder="Enter emergency contact number"
-                        value={form.emergencyContactNumber}
+                        value={
+                          form.emergencyContactNumber
+                        }
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
@@ -479,16 +546,19 @@ export default function FemaleListManager() {
                           }))
                         }
                         required
-                        className="h-12 rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10"
+                        className="h-11 w-full rounded-xl border-slate-200/70 bg-[#F4F7F7] shadow-none focus:bg-white focus:ring-4 focus:ring-[#3D6BB4]/10 sm:h-12"
                       />
                     </FormField>
 
-                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row md:col-span-2">
+
                       <Button
                         type="submit"
-                        className="rounded-xl bg-[#1A2B48] px-6 text-white shadow-sm hover:bg-[#3D6BB4]"
+                        className="h-11 w-full rounded-xl bg-[#1A2B48] px-6 text-white shadow-sm hover:bg-[#3D6BB4] sm:w-auto"
                       >
-                        {editingId ? 'Update Entry' : 'Add Student'}
+                        {editingId
+                          ? 'Update Entry'
+                          : 'Add Student'}
                       </Button>
 
                       {editingId && (
@@ -499,7 +569,7 @@ export default function FemaleListManager() {
                             setEditingId(null);
                             setForm(emptyForm);
                           }}
-                          className="rounded-xl border-slate-200/70 bg-white text-slate-600 hover:bg-[#F4F7F7]"
+                          className="h-11 w-full rounded-xl border-slate-200/70 bg-white text-slate-600 hover:bg-[#F4F7F7] sm:w-auto"
                         >
                           Cancel
                         </Button>
@@ -513,20 +583,23 @@ export default function FemaleListManager() {
                   LIST HEADER
               ================================================== */}
 
-              <div className="mb-4 flex items-end justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#688BB0]">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#688BB0] sm:text-[10px]">
                     Student Directory
                   </p>
 
-                  <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#1A2B48]">
+                  <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1A2B48] sm:text-2xl">
                     {entries.length} Student
-                    {entries.length !== 1 ? 's' : ''}
+                    {entries.length !== 1
+                      ? 's'
+                      : ''}
                   </h2>
                 </div>
 
                 {entries.length > 0 && (
-                  <span className="hidden rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-200/70 sm:block">
+                  <span className="w-fit rounded-full bg-white px-3 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200/70 sm:text-xs">
                     {canSetStatus
                       ? 'Status management enabled'
                       : 'Read only'}
@@ -538,9 +611,11 @@ export default function FemaleListManager() {
                   ENTRIES
               ================================================== */}
 
-              <div className="flex flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
+
                 {entries.length === 0 ? (
-                  <section className="rounded-[24px] bg-white px-6 py-16 text-center shadow-sm ring-1 ring-slate-200/70">
+                  <section className="rounded-[20px] bg-white px-5 py-14 text-center shadow-sm ring-1 ring-slate-200/70 sm:rounded-[24px] sm:px-6 sm:py-16">
+
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EBF2F2] text-[#3D6BB4]">
                       <span className="text-xl">+</span>
                     </div>
@@ -549,7 +624,7 @@ export default function FemaleListManager() {
                       No entries yet
                     </h3>
 
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-xs text-slate-500 sm:text-sm">
                       {canEdit
                         ? 'Add the first female student using the form above.'
                         : 'There are currently no students in this list.'}
@@ -558,101 +633,138 @@ export default function FemaleListManager() {
                 ) : (
                   entries.map((entry, index) => {
                     const status =
-                      STATUS_STYLES[entry.status] ||
+                      STATUS_STYLES[
+                        entry.status
+                      ] ||
                       STATUS_STYLES.pending;
 
                     return (
                       <Card
                         key={entry.id}
-                        className="group overflow-hidden rounded-2xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                        className="group min-w-0 overflow-hidden rounded-2xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                       >
-                        <CardContent className="p-5 sm:p-6">
-                          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <CardContent className="min-w-0 p-4 sm:p-5 md:p-6">
+
+                          {/* =====================================
+                              STUDENT HEADER
+                          ====================================== */}
+
+                          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 
                             {/* Student information */}
-                            <div className="flex min-w-0 gap-4">
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EBF2F2] text-sm font-semibold text-[#1A2B48]">
+
+                            <div className="flex min-w-0 gap-3 sm:gap-4">
+
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EBF2F2] text-sm font-semibold text-[#1A2B48] sm:h-11 sm:w-11">
                                 {entry.fullName
                                   ?.charAt(0)
                                   ?.toUpperCase()}
                               </div>
 
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="text-base font-semibold text-[#1A2B48]">
+                              <div className="min-w-0 flex-1">
+
+                                <div className="flex min-w-0 flex-wrap items-center gap-2">
+
+                                  <h3 className="min-w-0 break-words text-sm font-semibold text-[#1A2B48] sm:text-base">
                                     {entry.fullName}
                                   </h3>
 
-                                  <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-300">
-                                    #{String(index + 1).padStart(2, '0')}
+                                  <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-300 sm:text-[10px]">
+                                    #{String(
+                                      index + 1
+                                    ).padStart(
+                                      2,
+                                      '0'
+                                    )}
                                   </span>
                                 </div>
 
-                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                                  <span>
+                                <div className="mt-2 flex min-w-0 flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:flex-wrap sm:gap-x-4">
+                                  <span className="break-all">
                                     {entry.regNo ||
                                       'No registration number'}
                                   </span>
 
-                                  <span>
+                                  <span className="break-all">
                                     {entry.contactNumber}
                                   </span>
                                 </div>
 
-                                <div className="mt-3 rounded-xl bg-[#F4F7F7] px-3 py-2.5">
+                                {/* Emergency contact */}
+
+                                <div className="mt-3 min-w-0 rounded-xl bg-[#F4F7F7] px-3 py-2.5">
+
                                   <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                     Emergency Contact
                                   </p>
 
-                                  <p className="mt-1 text-xs text-slate-600">
-                                    {entry.emergencyContactName}
+                                  <p className="mt-1 break-words text-xs text-slate-600">
+                                    {
+                                      entry.emergencyContactName
+                                    }
+
                                     <span className="mx-2 text-slate-300">
                                       ·
                                     </span>
-                                    {entry.emergencyContactNumber}
+
+                                    {
+                                      entry.emergencyContactNumber
+                                    }
                                   </p>
                                 </div>
                               </div>
                             </div>
 
                             {/* Main status */}
-                            <div className="shrink-0">
+
+                            <div className="w-full shrink-0 lg:w-auto">
+
                               {canSetStatus ? (
                                 <select
-                                  className="h-10 rounded-xl border-0 bg-[#F4F7F7] px-3 text-xs font-semibold capitalize text-[#1A2B48] shadow-none ring-1 ring-slate-200/70 outline-none transition focus:ring-4 focus:ring-[#3D6BB4]/10"
-                                  value={entry.status}
+                                  className="h-10 w-full rounded-xl border-0 bg-[#F4F7F7] px-3 text-xs font-semibold capitalize text-[#1A2B48] shadow-none ring-1 ring-slate-200/70 outline-none transition focus:ring-4 focus:ring-[#3D6BB4]/10 lg:w-auto"
+                                  value={
+                                    entry.status
+                                  }
                                   onChange={(e) =>
                                     handleStatusChange(
                                       entry.id,
-                                      e.target.value
+                                      e.target
+                                        .value
                                     )
                                   }
                                 >
                                   <option value="pending">
                                     Pending
                                   </option>
+
                                   <option value="verified">
                                     Verified
                                   </option>
+
                                   <option value="rejected">
                                     Rejected
                                   </option>
                                 </select>
                               ) : (
                                 <div
-                                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold capitalize ring-1 ${status.className}`}
+                                  className={`flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold capitalize ring-1 ${status.className}`}
                                 >
                                   <span
-                                    className={`h-1.5 w-1.5 rounded-full ${status.dot}`}
+                                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`}
                                   />
+
                                   {status.label}
                                 </div>
                               )}
                             </div>
                           </div>
 
-                          {/* Metadata */}
-                          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
+                          {/* =====================================
+                              METADATA
+                          ====================================== */}
+
+                          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4 sm:mt-5 sm:pt-5">
+
                             <StatusBadge
                               label="Registered"
                               value={
@@ -664,25 +776,35 @@ export default function FemaleListManager() {
 
                             <StatusBadge
                               label="Payment"
-                              value={entry.paymentStatus}
+                              value={
+                                entry.paymentStatus
+                              }
                             />
 
                             <StatusBadge
                               label="Confirmation"
-                              value={entry.registrationStatus}
+                              value={
+                                entry.registrationStatus
+                              }
                             />
                           </div>
 
-                          {/* Actions */}
+                          {/* =====================================
+                              ACTIONS
+                          ====================================== */}
+
                           {canEdit && (
-                            <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                            <div className="mt-4 flex w-full flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
-                                  handleEdit(entry)
+                                  handleEdit(
+                                    entry
+                                  )
                                 }
-                                className="rounded-xl border-slate-200/70 bg-white text-[#1A2B48] hover:bg-[#F4F7F7]"
+                                className="h-10 w-full rounded-xl border-slate-200/70 bg-white text-[#1A2B48] hover:bg-[#F4F7F7] sm:w-auto"
                               >
                                 Edit Entry
                               </Button>
@@ -691,9 +813,11 @@ export default function FemaleListManager() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() =>
-                                  handleDelete(entry.id)
+                                  handleDelete(
+                                    entry.id
+                                  )
                                 }
-                                className="rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
+                                className="h-10 w-full rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 sm:w-auto"
                               >
                                 Delete
                               </Button>
@@ -712,8 +836,9 @@ export default function FemaleListManager() {
               FOOTER
           ====================================================== */}
 
-          <div className="mt-12 flex items-center justify-between border-t border-[#88B3D8]/20 pt-6">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#688BB0]">
+          <div className="mt-8 flex flex-col gap-3 border-t border-[#88B3D8]/20 pt-5 sm:mt-12 sm:flex-row sm:items-center sm:justify-between sm:pt-6">
+
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#688BB0] sm:text-[10px]">
               GIKI Adventure Club
             </p>
 
@@ -733,13 +858,20 @@ export default function FemaleListManager() {
    FORM FIELD
 ================================================================ */
 
-function FormField({ label, required = false, children }) {
+function FormField({
+  label,
+  required = false,
+  children,
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <div className="flex min-w-0 flex-col gap-2">
+      <label className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-[10px]">
         {label}
+
         {required && (
-          <span className="ml-1 text-red-500">*</span>
+          <span className="ml-1 text-red-500">
+            *
+          </span>
         )}
       </label>
 

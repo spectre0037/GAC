@@ -1,14 +1,33 @@
-import AdminSidebar from './AdminSidebar';
+import AdminSidebar from "./AdminSidebar";
 
 export default function AdminLayout({ children }) {
   return (
-    <div className="min-h-screen bg-[#EBF2F2]">
-      {/* Fixed sidebar */}
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#EBF2F2]">
       <AdminSidebar />
 
-      {/* Scrollable page content */}
-      <main className="min-h-screen pl-[270px]">
-        {children}
+      <main
+        className="
+          min-h-screen
+          w-full
+          min-w-0
+          pl-0
+          pt-[45px]
+
+          transition-[padding]
+          duration-300
+          ease-in-out
+
+          md:pt-0
+          md:pl-[225px]
+
+          lg:pl-[245px]
+
+          xl:pl-[270px]
+        "
+      >
+        <div className="min-h-screen w-full min-w-0">
+          {children}
+        </div>
       </main>
     </div>
   );

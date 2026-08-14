@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 function DetailRow({ label, value, copyable = false }) {
@@ -27,13 +27,13 @@ function DetailRow({ label, value, copyable = false }) {
   }
 
   return (
-    <div className="rounded-xl bg-slate-50 px-4 py-3">
+    <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-3 sm:px-4">
       <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
         {label}
       </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <span className="break-words text-sm font-medium text-[#1A2B48]">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <span className="min-w-0 break-words text-sm font-medium leading-5 text-[#1A2B48]">
           {displayValue}
         </span>
 
@@ -53,13 +53,13 @@ function DetailRow({ label, value, copyable = false }) {
 
 function Section({ eyebrow, title, children }) {
   return (
-    <section>
+    <section className="min-w-0">
       <div className="mb-3">
         <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
           {eyebrow}
         </p>
 
-        <h3 className="mt-1 text-sm font-semibold text-[#1A2B48]">
+        <h3 className="mt-1 text-sm font-semibold text-[#1A2B48] sm:text-[15px]">
           {title}
         </h3>
       </div>
@@ -83,12 +83,12 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ring-1 ${
+      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ring-1 ${
         styles[normalized] ||
         "bg-slate-100 text-slate-600 ring-slate-200"
       }`}
     >
-      {status || "Unknown"}
+      <span className="truncate">{status || "Unknown"}</span>
     </span>
   );
 }
@@ -97,7 +97,13 @@ function formatDate(value) {
   if (!value) return "—";
 
   try {
-    return new Date(value).toLocaleString();
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    return date.toLocaleString();
   } catch {
     return String(value);
   }
@@ -141,11 +147,11 @@ function PaymentScreenshotCard({ screenshot, index }) {
     screenshot?.verificationStatus || "pending";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
       {/* Screenshot header */}
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+      <div className="flex flex-col gap-2.5 border-b border-slate-100 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="min-w-0">
+          <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             Payment Screenshot #{index + 1}
           </p>
 
@@ -154,24 +160,28 @@ function PaymentScreenshotCard({ screenshot, index }) {
           </p>
         </div>
 
-        <StatusBadge status={verificationStatus} />
+        <div className="shrink-0">
+          <StatusBadge status={verificationStatus} />
+        </div>
       </div>
 
       {/* Image */}
       {screenshot?.imageUrl && !imageError ? (
-        <div className="bg-slate-50 p-3">
+        <div className="bg-slate-50 p-2.5 sm:p-3">
           <a
             href={screenshot.imageUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="group block"
           >
-            <img
-              src={screenshot.imageUrl}
-              alt={`Payment screenshot ${index + 1}`}
-              onError={() => setImageError(true)}
-              className="max-h-[500px] w-full rounded-xl object-contain transition-opacity group-hover:opacity-90"
-            />
+            <div className="flex max-h-[500px] min-h-[160px] items-center justify-center overflow-hidden rounded-xl bg-white">
+              <img
+                src={screenshot.imageUrl}
+                alt={`Payment screenshot ${index + 1}`}
+                onError={() => setImageError(true)}
+                className="max-h-[500px] w-full max-w-full object-contain transition-opacity group-hover:opacity-90"
+              />
+            </div>
 
             <p className="mt-2 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-[#3D6BB4]">
               Click to open full size
@@ -179,7 +189,7 @@ function PaymentScreenshotCard({ screenshot, index }) {
           </a>
         </div>
       ) : (
-        <div className="flex min-h-[180px] items-center justify-center bg-slate-50 px-5 text-center">
+        <div className="flex min-h-[160px] items-center justify-center bg-slate-50 px-5 text-center sm:min-h-[180px]">
           <div>
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-400">
               !
@@ -197,7 +207,7 @@ function PaymentScreenshotCard({ screenshot, index }) {
       )}
 
       {/* Payment details */}
-      <div className="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 border-t border-slate-100 p-3.5 sm:grid-cols-2 sm:p-4">
         <DetailRow
           label="Amount"
           value={
@@ -224,30 +234,36 @@ function PaymentScreenshotCard({ screenshot, index }) {
         />
 
         {screenshot?.rejectionReason && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 sm:col-span-2">
+          <div className="min-w-0 rounded-xl bg-red-50 px-4 py-3 sm:col-span-2">
             <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-red-500">
               Rejection Reason
             </div>
 
-            <p className="whitespace-pre-wrap text-sm text-red-700">
+            <p className="break-words whitespace-pre-wrap text-sm leading-5 text-red-700">
               {screenshot.rejectionReason}
             </p>
           </div>
         )}
 
-        <div className="rounded-xl bg-slate-50 px-4 py-3 sm:col-span-2">
+        <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-3 sm:col-span-2">
           <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             Image URL
           </div>
 
-          <a
-            href={screenshot?.imageUrl || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="break-all text-xs font-medium text-[#3D6BB4] hover:underline"
-          >
-            {screenshot?.imageUrl || "—"}
-          </a>
+          {screenshot?.imageUrl ? (
+            <a
+              href={screenshot.imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block break-all text-xs font-medium leading-5 text-[#3D6BB4] hover:underline"
+            >
+              {screenshot.imageUrl}
+            </a>
+          ) : (
+            <span className="text-sm font-medium text-[#1A2B48]">
+              —
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -258,6 +274,33 @@ export default function RegistrationDetailModal({
   registration,
   onClose,
 }) {
+  useEffect(() => {
+    if (!registration) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [registration, onClose]);
+
+  useEffect(() => {
+    if (!registration) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [registration]);
+
   if (!registration) return null;
 
   const screenshots = Array.isArray(
@@ -276,63 +319,72 @@ export default function RegistrationDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/60 p-2 backdrop-blur-sm sm:p-4 md:p-6"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] bg-white shadow-2xl ring-1 ring-slate-200"
+        className="
+          flex h-full max-h-[96vh] w-full
+          max-w-4xl
+          flex-col overflow-hidden
+          rounded-2xl bg-white
+          shadow-2xl ring-1 ring-slate-200
+          sm:h-auto sm:max-h-[94vh] sm:rounded-[26px]
+        "
         onClick={(e) => e.stopPropagation()}
       >
         {/* =====================================================
             HEADER
         ===================================================== */}
-        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5 md:px-8">
-          <div className="flex min-w-0 items-center gap-4">
-            {/* Avatar */}
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-base font-semibold text-[#3D6BB4]">
-              {registration.fullName
-                ?.charAt(0)
-                ?.toUpperCase() || "?"}
-            </div>
+        <div className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5 md:px-8">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+              {/* Avatar */}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-sm font-semibold text-[#3D6BB4] sm:h-12 sm:w-12 sm:text-base">
+                {registration.fullName
+                  ?.charAt(0)
+                  ?.toUpperCase() || "?"}
+              </div>
 
-            <div className="min-w-0">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                Registration Details
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.15em] text-slate-400 sm:text-[9px]">
+                  Registration Details
+                </p>
 
-              <h2 className="mt-1 truncate text-xl font-semibold tracking-tight text-[#1A2B48]">
-                {registration.fullName || "Unnamed Participant"}
-              </h2>
+                <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-[#1A2B48] sm:text-xl">
+                  {registration.fullName ||
+                    "Unnamed Participant"}
+                </h2>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <StatusBadge status={registration.status} />
+                <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 sm:mt-2 sm:gap-2">
+                  <StatusBadge status={registration.status} />
 
-                {registration.regNo && (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-medium text-slate-500">
-                    {registration.regNo}
-                  </span>
-                )}
+                  {registration.regNo && (
+                    <span className="max-w-[180px] truncate rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-medium text-slate-500 sm:max-w-[240px]">
+                      {registration.regNo}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Close */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
-          >
-            ×
-          </button>
+            {/* Close */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg leading-none text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 sm:h-9 sm:w-9"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* =====================================================
             SCROLLABLE CONTENT
         ===================================================== */}
-        <div className="overflow-y-auto px-6 py-7 md:px-8">
-          <div className="space-y-8">
-
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-7 md:px-8">
+          <div className="min-w-0 space-y-7 sm:space-y-8">
             {/* =================================================
                 BASIC INFORMATION
             ================================================= */}
@@ -390,19 +442,19 @@ export default function RegistrationDetailModal({
                 eyebrow="Group"
                 title="Group Members"
               >
-                <div className="rounded-xl bg-slate-50 p-4">
+                <div className="rounded-xl bg-slate-50 p-3 sm:p-4">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {registration.groupMemberNames.map(
                       (member, index) => (
                         <div
                           key={`${member}-${index}`}
-                          className="flex items-center gap-3 rounded-lg bg-white px-3 py-2.5 ring-1 ring-slate-100"
+                          className="flex min-w-0 items-center gap-3 rounded-lg bg-white px-3 py-2.5 ring-1 ring-slate-100"
                         >
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-[9px] font-semibold text-[#3D6BB4]">
                             {index + 1}
                           </span>
 
-                          <span className="text-sm font-medium text-[#1A2B48]">
+                          <span className="min-w-0 break-words text-sm font-medium text-[#1A2B48]">
                             {member}
                           </span>
                         </div>
@@ -442,30 +494,31 @@ export default function RegistrationDetailModal({
               title="Medical & Waiver Information"
             >
               <div className="space-y-3">
-                <div className="rounded-xl bg-slate-50 px-4 py-4">
+                <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-4">
                   <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Medical Information
                   </div>
 
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-[#1A2B48]">
+                  <p className="break-words whitespace-pre-wrap text-sm leading-6 text-[#1A2B48]">
                     {registration.medicalInfo ||
                       "No medical information provided."}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
+                <div className="flex flex-col gap-3 rounded-xl bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                       Safety Waiver
                     </p>
 
                     <p className="mt-1 text-sm font-medium text-[#1A2B48]">
-                      Participant accepted the safety waiver
+                      Participant accepted the safety
+                      waiver
                     </p>
                   </div>
 
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                    className={`w-fit shrink-0 rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
                       registration.waiverAccepted
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-red-50 text-red-700"
@@ -496,13 +549,13 @@ export default function RegistrationDetailModal({
                       return (
                         <div
                           key={key}
-                          className="rounded-xl bg-slate-50 px-4 py-3"
+                          className="min-w-0 rounded-xl bg-slate-50 px-4 py-3"
                         >
                           <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                             {formatKey(key)}
                           </div>
 
-                          <div className="break-words whitespace-pre-wrap text-sm font-medium text-[#1A2B48]">
+                          <div className="break-words whitespace-pre-wrap text-sm font-medium leading-5 text-[#1A2B48]">
                             {formattedValue}
                           </div>
                         </div>
@@ -521,7 +574,7 @@ export default function RegistrationDetailModal({
               title="Registration & Ticket Information"
             >
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <div className="min-w-0 rounded-xl bg-slate-50 px-4 py-3">
                   <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Registration Status
                   </div>
@@ -585,8 +638,8 @@ export default function RegistrationDetailModal({
                   </p>
 
                   <p className="mt-1 text-[10px] text-amber-600/80">
-                    This participant has not uploaded a payment
-                    screenshot yet.
+                    This participant has not uploaded a
+                    payment screenshot yet.
                   </p>
                 </div>
               ) : (
@@ -655,12 +708,12 @@ export default function RegistrationDetailModal({
             {/* =================================================
                 RAW DATA
             ================================================= */}
-            <details className="overflow-hidden rounded-2xl border border-slate-200">
+            <details className="min-w-0 overflow-hidden rounded-2xl border border-slate-200">
               <summary className="cursor-pointer bg-slate-50 px-4 py-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500 hover:bg-slate-100">
                 View Raw Registration Data
               </summary>
 
-              <pre className="max-h-[400px] overflow-auto bg-[#111827] p-4 text-[11px] leading-5 text-slate-200">
+              <pre className="max-h-[400px] max-w-full overflow-auto bg-[#111827] p-3 text-[10px] leading-5 text-slate-200 sm:p-4 sm:text-[11px]">
                 {JSON.stringify(registration, null, 2)}
               </pre>
             </details>
@@ -670,7 +723,7 @@ export default function RegistrationDetailModal({
         {/* =====================================================
             FOOTER
         ===================================================== */}
-        <div className="border-t border-slate-100 bg-white px-6 py-4 md:px-8">
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3.5 sm:px-6 sm:py-4 md:px-8">
           <Button
             variant="outline"
             className="h-10 w-full rounded-xl border-0 bg-[#F4F7F7] text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 hover:bg-[#EBF2F2]"

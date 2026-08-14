@@ -1,39 +1,50 @@
-import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
-import { useAuthStore } from '@/store/authStore';
-import AdminLayout from '@/components/admin/AdminLayout';
+import { useEffect, useState } from "react";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/store/authStore";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 const ROLES = [
-  'student',
-  'event_coordinator',
-  'finance_master',
-  'master_logistics',
-  'vp_ops',
-  'president',
-  'super_admin',
-  'general_secretary',
+  "student",
+  "event_coordinator",
+  "finance_master",
+  "master_logistics",
+  "vp_ops",
+  "president",
+  "super_admin",
+  "general_secretary",
 ];
 
 const ROLE_LABELS = {
-  student: 'Student',
-  event_coordinator: 'Event Coordinator',
-  finance_master: 'Finance Master',
-  master_logistics: 'Master Logistics',
-  vp_ops: 'VP Operations',
-  president: 'President',
-  super_admin: 'Super Admin',
-  general_secretary: 'General Secretary',
+  student: "Student",
+  event_coordinator: "Event Coordinator",
+  finance_master: "Finance Master",
+  master_logistics: "Master Logistics",
+  vp_ops: "VP Operations",
+  president: "President",
+  super_admin: "Super Admin",
+  general_secretary: "General Secretary",
 };
 
 const ROLE_COLORS = {
-  student: 'bg-slate-100 text-slate-600',
-  event_coordinator: 'bg-blue-50 text-blue-700',
-  finance_master: 'bg-emerald-50 text-emerald-700',
-  master_logistics: 'bg-amber-50 text-amber-700',
-  vp_ops: 'bg-violet-50 text-violet-700',
-  president: 'bg-indigo-50 text-indigo-700',
-  super_admin: 'bg-[#1A2B48] text-white',
-  general_secretary:'bg-indigo-100 text-indigo-500',
+  student: "bg-slate-100 text-slate-600",
+  event_coordinator: "bg-blue-50 text-blue-700",
+  finance_master: "bg-emerald-50 text-emerald-700",
+  master_logistics: "bg-amber-50 text-amber-700",
+  vp_ops: "bg-violet-50 text-violet-700",
+  president: "bg-indigo-50 text-indigo-700",
+  super_admin: "bg-[#1A2B48] text-white",
+  general_secretary: "bg-indigo-100 text-indigo-500",
+};
+
+const ROLE_DOT_COLORS = {
+  student: "bg-slate-300",
+  event_coordinator: "bg-blue-500",
+  finance_master: "bg-emerald-500",
+  master_logistics: "bg-amber-500",
+  vp_ops: "bg-violet-500",
+  president: "bg-indigo-500",
+  super_admin: "bg-[#1A2B48]",
+  general_secretary: "bg-indigo-400",
 };
 
 export default function SuperAdminDashboard() {
@@ -41,7 +52,7 @@ export default function SuperAdminDashboard() {
 
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [savingId, setSavingId] = useState(null);
 
   useEffect(() => {
@@ -50,14 +61,15 @@ export default function SuperAdminDashboard() {
 
   async function fetchUsers() {
     setIsLoading(true);
+    setError("");
 
     try {
-      const { data } = await api.get('/admin/users');
-      setUsers(data.users);
+      const { data } = await api.get("/admin/users");
+      setUsers(data.users || []);
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Failed to load users.'
+          "Failed to load users."
       );
     } finally {
       setIsLoading(false);
@@ -66,7 +78,7 @@ export default function SuperAdminDashboard() {
 
   async function handleRoleChange(userId, newRole) {
     setSavingId(userId);
-    setError('');
+    setError("");
 
     try {
       await api.patch(`/admin/users/${userId}/role`, {
@@ -83,7 +95,7 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Failed to update role.'
+          "Failed to update role."
       );
     } finally {
       setSavingId(null);
@@ -97,7 +109,7 @@ export default function SuperAdminDashboard() {
 
     if (!confirmed) return;
 
-    setError('');
+    setError("");
 
     try {
       await api.delete(`/admin/users/${userId}`);
@@ -108,7 +120,7 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Failed to delete user.'
+          "Failed to delete user."
       );
     }
   }
@@ -123,96 +135,73 @@ export default function SuperAdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen px-5 py-8 md:px-8 lg:px-12">
-
-        <div className="mx-auto max-w-7xl">
+      <div className="min-h-screen w-full overflow-x-hidden bg-[#EBF2F2]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-10 lg:py-10 xl:px-12">
 
           {/* =====================================================
               HEADER
           ====================================================== */}
 
-          <div className="mb-8">
-
-            <div className="mb-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3D6BB4]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
+          <div className="mb-7 sm:mb-8">
+            <div className="mb-4 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#3D6BB4] sm:mb-5 sm:text-[10px] sm:tracking-[0.2em]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#3D6BB4]" />
               Administration
             </div>
 
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-
-              <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#1A2B48] md:text-4xl">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[#1A2B48] sm:text-3xl md:text-4xl">
                   Role Management
                 </h1>
 
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                <p className="mt-2 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm sm:leading-6">
                   Manage the GAC community, appoint leadership
                   positions, and control access across the portal.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-
-                <div className="rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-200/70">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              <div className="flex w-full sm:w-auto">
+                <div className="w-full rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/70 sm:min-w-[145px] sm:px-5">
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-[9px]">
                     Total Members
                   </p>
 
-                  <p className="mt-1 text-2xl font-semibold tracking-tight text-[#1A2B48]">
+                  <p className="mt-1 text-xl font-semibold tracking-tight text-[#1A2B48] sm:text-2xl">
                     {users.length}
                   </p>
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
           {/* =====================================================
               ROLE OVERVIEW
           ====================================================== */}
 
-          <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
-
+          <div className="mb-7 grid grid-cols-2 gap-2.5 sm:mb-8 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
             {ROLES.map((role) => (
               <div
                 key={role}
-                className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70"
+                className="min-w-0 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:p-4"
               >
-                <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  {ROLE_LABELS[role]}
-                </p>
-
-                <div className="mt-3 flex items-end justify-between">
-
-                  <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                    {roleCounts[role] || 0}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400 sm:text-[9px] sm:tracking-[0.12em]">
+                    {ROLE_LABELS[role]}
                   </p>
 
                   <span
-                    className={`h-2 w-2 rounded-full ${
-                      role === 'super_admin'
-                        ? 'bg-[#1A2B48]'
-                        : role === 'president'
-                          ? 'bg-indigo-500'
-                          : role === 'vp_ops'
-                            ? 'bg-violet-500'
-                            : role === 'event_coordinator'
-                              ? 'bg-blue-500'
-                              : role === 'finance_master'
-                                ? 'bg-emerald-500'
-                                : role === 'master_logistics'
-                                  ? 'bg-amber-500'
-                                  : 'bg-slate-300'
+                    className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2 ${
+                      ROLE_DOT_COLORS[role] ||
+                      "bg-slate-300"
                     }`}
                   />
-
                 </div>
 
+                <p className="mt-2 text-xl font-semibold tracking-tight text-[#1A2B48] sm:mt-3 sm:text-2xl">
+                  {roleCounts[role] || 0}
+                </p>
               </div>
             ))}
-
           </div>
 
           {/* =====================================================
@@ -220,12 +209,12 @@ export default function SuperAdminDashboard() {
           ====================================================== */}
 
           {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-3.5 py-3 text-xs text-red-700 sm:mb-6 sm:px-4 sm:text-sm">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 font-semibold">
                 !
               </span>
 
-              {error}
+              <span className="pt-1">{error}</span>
             </div>
           )}
 
@@ -233,52 +222,41 @@ export default function SuperAdminDashboard() {
               USERS
           ====================================================== */}
 
-          <section className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
+          <section className="overflow-hidden rounded-[20px] bg-white shadow-sm ring-1 ring-slate-200/70 sm:rounded-[24px]">
 
-            {/* Section header */}
+            {/* Section Header */}
 
-            <div className="flex flex-col justify-between gap-4 border-b border-slate-100 px-5 py-5 md:flex-row md:items-center md:px-7">
-
-              <div>
-                <h2 className="text-base font-semibold text-[#1A2B48]">
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:px-5 sm:py-5 md:flex-row md:items-center md:justify-between md:px-7">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-[#1A2B48] sm:text-base">
                   Community Members
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">
                   Manage member roles and account access.
                 </p>
               </div>
 
-              <div className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
+              <div className="self-start rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[9px] font-medium text-slate-500 sm:text-[10px] md:self-auto">
                 {users.length} accounts
               </div>
-
             </div>
 
             {/* Loading */}
 
             {isLoading ? (
-
-              <div className="flex min-h-[300px] items-center justify-center">
-
+              <div className="flex min-h-[280px] items-center justify-center px-5">
                 <div className="text-center">
-
                   <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#3D6BB4]" />
 
                   <p className="text-xs text-slate-400">
                     Loading members...
                   </p>
-
                 </div>
-
               </div>
-
             ) : users.length === 0 ? (
-
-              <div className="flex min-h-[300px] items-center justify-center">
-
+              <div className="flex min-h-[280px] items-center justify-center px-5">
                 <div className="text-center">
-
                   <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EBF2F2] text-xl text-slate-400">
                     ◌
                   </div>
@@ -290,145 +268,99 @@ export default function SuperAdminDashboard() {
                   <p className="mt-1 text-xs text-slate-400">
                     There are currently no accounts to manage.
                   </p>
-
                 </div>
-
               </div>
-
             ) : (
+              <>
+                {/* =================================================
+                    MOBILE / SMALL TABLET CARDS
+                ================================================== */}
 
-              <div className="overflow-x-auto">
+                <div className="divide-y divide-slate-100 md:hidden">
+                  {users.map((u) => {
+                    const isCurrentUser =
+                      u.id === currentUser?.id;
 
-                <table className="w-full min-w-[850px]">
+                    const initials =
+                      u.fullName
+                        ?.split(" ")
+                        .map((n) => n.charAt(0))
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase() || "?";
 
-                  <thead>
+                    return (
+                      <div
+                        key={u.id}
+                        className="p-4 sm:p-5"
+                      >
+                        {/* User */}
 
-                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EBF2F2] text-xs font-semibold text-[#3D6BB4]">
+                            {u.avatarUrl ? (
+                              <img
+                                src={u.avatarUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              initials
+                            )}
+                          </div>
 
-                      <th className="px-7 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Member
-                      </th>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="min-w-0 truncate text-sm font-medium text-[#1A2B48]">
+                                {u.fullName}
+                              </p>
 
-                      <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Email
-                      </th>
-
-                      <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Current Role
-                      </th>
-
-                      <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Assign Role
-                      </th>
-
-                      <th className="px-7 py-4 text-right text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Action
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {users.map((u) => {
-
-                      const isCurrentUser =
-                        u.id === currentUser?.id;
-
-                      const initials =
-                        u.fullName
-                          ?.split(' ')
-                          .map((n) => n.charAt(0))
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase() || '?';
-
-                      return (
-                        <tr
-                          key={u.id}
-                          className="group border-b border-slate-100 last:border-0 transition-colors hover:bg-[#F7FAFA]"
-                        >
-
-                          {/* MEMBER */}
-
-                          <td className="px-7 py-5">
-
-                            <div className="flex items-center gap-3">
-
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EBF2F2] text-xs font-semibold text-[#3D6BB4]">
-
-                                {u.avatarUrl ? (
-                                  <img
-                                    src={u.avatarUrl}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  initials
-                                )}
-
-                              </div>
-
-                              <div className="min-w-0">
-
-                                <div className="flex items-center gap-2">
-
-                                  <p className="truncate text-sm font-medium text-[#1A2B48]">
-                                    {u.fullName}
-                                  </p>
-
-                                  {isCurrentUser && (
-                                    <span className="rounded-full bg-[#EBF2F2] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-[#3D6BB4]">
-                                      You
-                                    </span>
-                                  )}
-
-                                </div>
-
-                                {u.regNo && (
-                                  <p className="mt-0.5 text-[10px] text-slate-400">
-                                    {u.regNo}
-                                  </p>
-                                )}
-
-                              </div>
-
+                              {isCurrentUser && (
+                                <span className="shrink-0 rounded-full bg-[#EBF2F2] px-2 py-0.5 text-[7px] font-semibold uppercase tracking-wider text-[#3D6BB4]">
+                                  You
+                                </span>
+                              )}
                             </div>
 
-                          </td>
+                            {u.regNo && (
+                              <p className="mt-0.5 text-[9px] text-slate-400">
+                                {u.regNo}
+                              </p>
+                            )}
 
-                          {/* EMAIL */}
-
-                          <td className="px-5 py-5">
-
-                            <p className="max-w-[220px] truncate text-xs text-slate-500">
+                            <p className="mt-1 truncate text-[10px] text-slate-500">
                               {u.email}
                             </p>
+                          </div>
+                        </div>
 
-                          </td>
+                        {/* Role */}
 
-                          {/* CURRENT ROLE */}
-
-                          <td className="px-5 py-5">
+                        <div className="mt-4 flex flex-col gap-3">
+                          <div>
+                            <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Current Role
+                            </p>
 
                             <span
-                              className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                              className={`inline-flex max-w-full rounded-full px-3 py-1.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
                                 ROLE_COLORS[u.role] ||
-                                'bg-slate-100 text-slate-600'
+                                "bg-slate-100 text-slate-600"
                               }`}
                             >
-                              {ROLE_LABELS[u.role]}
+                              {ROLE_LABELS[u.role] ||
+                                u.role}
                             </span>
+                          </div>
 
-                          </td>
+                          {/* Assign Role */}
 
-                          {/* CHANGE ROLE */}
+                          <div>
+                            <p className="mb-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Assign Role
+                            </p>
 
-                          <td className="px-5 py-5">
-
-                            <div className="relative inline-block">
-
+                            <div className="relative">
                               <select
                                 value={u.role}
                                 disabled={
@@ -441,9 +373,8 @@ export default function SuperAdminDashboard() {
                                     e.target.value
                                   )
                                 }
-                                className="appearance-none rounded-xl border-0 bg-[#F4F7F7] py-2.5 pl-3 pr-9 text-xs font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4] disabled:cursor-not-allowed disabled:opacity-40"
+                                className="h-10 w-full appearance-none rounded-xl border-0 bg-[#F4F7F7] py-2.5 pl-3 pr-9 text-xs font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4] disabled:cursor-not-allowed disabled:opacity-40"
                               >
-
                                 {ROLES.map((role) => (
                                   <option
                                     key={role}
@@ -452,64 +383,227 @@ export default function SuperAdminDashboard() {
                                     {ROLE_LABELS[role]}
                                   </option>
                                 ))}
-
                               </select>
 
                               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
                                 ↓
                               </span>
-
                             </div>
 
                             {savingId === u.id && (
-                              <span className="ml-2 text-[9px] text-[#3D6BB4]">
+                              <p className="mt-1.5 text-[9px] text-[#3D6BB4]">
                                 Saving...
-                              </span>
+                              </p>
                             )}
+                          </div>
+                        </div>
 
-                          </td>
+                        {/* Delete */}
 
-                          {/* DELETE */}
+                        {!isCurrentUser && (
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDelete(
+                                  u.id,
+                                  u.fullName
+                                )
+                              }
+                              className="rounded-xl px-3 py-2 text-[9px] font-medium text-slate-400 transition-all hover:bg-red-50 hover:text-red-600"
+                            >
+                              Remove Account
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-                          <td className="px-7 py-5 text-right">
+                {/* =================================================
+                    TABLET / DESKTOP TABLE
+                ================================================== */}
 
-                            {!isCurrentUser && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDelete(
-                                    u.id,
-                                    u.fullName
-                                  )
-                                }
-                                className="rounded-xl px-3 py-2 text-[10px] font-medium text-slate-400 transition-all hover:bg-red-50 hover:text-red-600"
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[760px]">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/50">
+                        <th className="px-5 py-4 text-left text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:px-7 lg:text-[9px]">
+                          Member
+                        </th>
+
+                        <th className="px-4 py-4 text-left text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:px-5 lg:text-[9px]">
+                          Email
+                        </th>
+
+                        <th className="px-4 py-4 text-left text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:px-5 lg:text-[9px]">
+                          Current Role
+                        </th>
+
+                        <th className="px-4 py-4 text-left text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:px-5 lg:text-[9px]">
+                          Assign Role
+                        </th>
+
+                        <th className="px-5 py-4 text-right text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:px-7 lg:text-[9px]">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {users.map((u) => {
+                        const isCurrentUser =
+                          u.id === currentUser?.id;
+
+                        const initials =
+                          u.fullName
+                            ?.split(" ")
+                            .map((n) => n.charAt(0))
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase() || "?";
+
+                        return (
+                          <tr
+                            key={u.id}
+                            className="group border-b border-slate-100 last:border-0 transition-colors hover:bg-[#F7FAFA]"
+                          >
+                            {/* MEMBER */}
+
+                            <td className="px-5 py-4 lg:px-7 lg:py-5">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EBF2F2] text-[10px] font-semibold text-[#3D6BB4] lg:h-10 lg:w-10 lg:text-xs">
+                                  {u.avatarUrl ? (
+                                    <img
+                                      src={u.avatarUrl}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="max-w-[160px] truncate text-xs font-medium text-[#1A2B48] lg:max-w-[220px] lg:text-sm">
+                                      {u.fullName}
+                                    </p>
+
+                                    {isCurrentUser && (
+                                      <span className="shrink-0 rounded-full bg-[#EBF2F2] px-2 py-0.5 text-[7px] font-semibold uppercase tracking-wider text-[#3D6BB4]">
+                                        You
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {u.regNo && (
+                                    <p className="mt-0.5 text-[9px] text-slate-400">
+                                      {u.regNo}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* EMAIL */}
+
+                            <td className="px-4 py-4 lg:px-5 lg:py-5">
+                              <p className="max-w-[160px] truncate text-[10px] text-slate-500 lg:max-w-[220px] lg:text-xs">
+                                {u.email}
+                              </p>
+                            </td>
+
+                            {/* CURRENT ROLE */}
+
+                            <td className="px-4 py-4 lg:px-5 lg:py-5">
+                              <span
+                                className={`inline-flex max-w-[150px] rounded-full px-2.5 py-1.5 text-[8px] font-semibold uppercase tracking-[0.06em] lg:px-3 lg:text-[9px] lg:tracking-[0.08em] ${
+                                  ROLE_COLORS[u.role] ||
+                                  "bg-slate-100 text-slate-600"
+                                }`}
                               >
-                                Remove
-                              </button>
-                            )}
+                                <span className="truncate">
+                                  {ROLE_LABELS[u.role] ||
+                                    u.role}
+                                </span>
+                              </span>
+                            </td>
 
-                          </td>
+                            {/* CHANGE ROLE */}
 
-                        </tr>
-                      );
-                    })}
+                            <td className="px-4 py-4 lg:px-5 lg:py-5">
+                              <div className="relative inline-block max-w-full">
+                                <select
+                                  value={u.role}
+                                  disabled={
+                                    isCurrentUser ||
+                                    savingId === u.id
+                                  }
+                                  onChange={(e) =>
+                                    handleRoleChange(
+                                      u.id,
+                                      e.target.value
+                                    )
+                                  }
+                                  className="max-w-[170px] appearance-none rounded-xl border-0 bg-[#F4F7F7] py-2 pl-3 pr-8 text-[10px] font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4] disabled:cursor-not-allowed disabled:opacity-40 lg:max-w-none lg:py-2.5 lg:text-xs"
+                                >
+                                  {ROLES.map((role) => (
+                                    <option
+                                      key={role}
+                                      value={role}
+                                    >
+                                      {ROLE_LABELS[role]}
+                                    </option>
+                                  ))}
+                                </select>
 
-                  </tbody>
+                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 lg:right-3 lg:text-[10px]">
+                                  ↓
+                                </span>
+                              </div>
 
-                </table>
+                              {savingId === u.id && (
+                                <span className="ml-2 text-[8px] text-[#3D6BB4] lg:text-[9px]">
+                                  Saving...
+                                </span>
+                              )}
+                            </td>
 
-              </div>
+                            {/* DELETE */}
 
+                            <td className="px-5 py-4 text-right lg:px-7 lg:py-5">
+                              {!isCurrentUser && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDelete(
+                                      u.id,
+                                      u.fullName
+                                    )
+                                  }
+                                  className="rounded-xl px-2.5 py-2 text-[9px] font-medium text-slate-400 transition-all hover:bg-red-50 hover:text-red-600 lg:px-3 lg:text-[10px]"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-
           </section>
 
           {/* =====================================================
               FOOTNOTE
           ====================================================== */}
 
-          <div className="mt-5 flex flex-col justify-between gap-2 px-2 text-[9px] text-slate-400 sm:flex-row">
-
+          <div className="mt-5 flex flex-col gap-2 px-2 text-[9px] text-slate-400 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
             <p>
               Changes to member roles take effect immediately.
             </p>
@@ -517,11 +611,8 @@ export default function SuperAdminDashboard() {
             <p>
               GIKI Adventure Club · Admin Portal
             </p>
-
           </div>
-
         </div>
-
       </div>
     </AdminLayout>
   );

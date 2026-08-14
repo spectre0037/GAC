@@ -15,6 +15,7 @@ import reminderRoutes from './routes/reminderRoutes.js';
 import checkinRoutes from './routes/checkinRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
 import femaleListRoutes from './routes/femaleListRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/female-list', femaleListRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

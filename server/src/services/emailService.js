@@ -6,12 +6,9 @@ import { emailLogs } from '../db/schema/index.js';
 dotenv.config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = `${process.env.FROM_NAME || 'GAC'} <${process.env.FROM_EMAIL || 'onboarding@resend.dev'}>`;
+const FROM = `${process.env.FROM_NAME || 'GAC'} <${process.env.FROM_EMAIL || 'noreply@gikadventureclub.me'}>`;
+const INSTAGRAM_URL = process.env.INSTAGRAM_URL || 'https://instagram.com';
 
-// Every send goes through here so every attempt (success or failure) is
-// logged to email_logs — gives us an audit trail without needing a separate
-// monitoring tool. Failures never throw upward: a broken email send should
-// never block the actual registration/approval/etc. action that triggered it.
 async function sendEmail({ to, subject, html, type, relatedEventId = null, relatedUserId = null }) {
   try {
     await resend.emails.send({ from: FROM, to, subject, html });
@@ -46,6 +43,21 @@ function wrapper(bodyHtml) {
   `;
 }
 
+export function sendOtpEmail(user, otp) {
+  return sendEmail({
+    to: user.email,
+    subject: 'Verify your GAC account',
+    type: 'welcome',
+    relatedUserId: user.id,
+    html: wrapper(`
+      <h2>Verify your email</h2>
+      <p>Hi ${user.fullName}, use this code to verify your account:</p>
+      <p style="font-size: 28px; font-weight: 600; letter-spacing: 4px;">${otp}</p>
+      <p>This code expires in 10 minutes.</p>
+    `),
+  });
+}
+
 export function sendWelcomeEmail(user) {
   return sendEmail({
     to: user.email,
@@ -53,8 +65,24 @@ export function sendWelcomeEmail(user) {
     type: 'welcome',
     relatedUserId: user.id,
     html: wrapper(`
-      <h2>Welcome, ${user.fullName}!</h2>
-      <p>Your account is ready. Browse upcoming trips and hikes and register whenever you're ready.</p>
+      <h2>Welcome to GAC, ${user.fullName}!</h2>
+      <p>The GIKI Adventure Club plans and runs hiking and trekking trips across northern Pakistan for GIKI students. Every trip starts with a small core team scouting the route and planning logistics before opening registration to everyone.</p>
+      <p>Your account is ready — browse upcoming trips, register, and track your spot right from the portal.</p>
+      <p>Follow us on Instagram for announcements and photos: <a href="${INSTAGRAM_URL}">${INSTAGRAM_URL}</a></p>
+    `),
+  });
+}
+
+export function sendAdminNewUserEmail(adminUser, newUser) {
+  return sendEmail({
+    to: adminUser.email,
+    subject: 'New user registered on GAC',
+    type: 'welcome',
+    relatedUserId: newUser.id,
+    html: wrapper(`
+      <h2>New account created</h2>
+      <p><strong>${newUser.fullName}</strong> just verified their email and joined the platform.</p>
+      <p>Email: ${newUser.email}</p>
     `),
   });
 }
@@ -67,13 +95,30 @@ export function sendRegistrationReceivedEmail(user, event) {
     relatedEventId: event.id,
     relatedUserId: user.id,
     html: wrapper(`
-      <h2>We've got your registration</h2>
-      <p>Your registration for <strong>${event.title}</strong> is pending. Upload your payment screenshot on the event page to complete it.</p>
+      <h2>We've got your submission</h2>
+      <p>Your registration for <strong>${event.title}</strong> has been received. You'll be notified by email or WhatsApp once your seat is confirmed.</p>
+    `),
+  });
+}
+
+export function sendAdminNewRegistrationEmail(adminUser, registrantName, event) {
+  return sendEmail({
+    to: adminUser.email,
+    subject: `New registration: ${event.title}`,
+    type: 'registration_received',
+    relatedEventId: event.id,
+    html: wrapper(`
+      <h2>New registration submission</h2>
+      <p><strong>${registrantName}</strong> just submitted a registration for <strong>${event.title}</strong>.</p>
+      <p>Go to the portal to review and update their status.</p>
     `),
   });
 }
 
 export function sendApprovedEmail(user, event) {
+  const dateStr = event.startDate
+    ? new Date(event.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'the event date';
   return sendEmail({
     to: user.email,
     subject: `You're confirmed: ${event.title}`,
@@ -81,8 +126,13 @@ export function sendApprovedEmail(user, event) {
     relatedEventId: event.id,
     relatedUserId: user.id,
     html: wrapper(`
-      <h2>You're in! 🏔️</h2>
-      <p>Your spot for <strong>${event.title}</strong> is confirmed. See you there!</p>
+      <h2>Your seat is confirmed! 🏔️</h2>
+      <p>See you on <strong>${dateStr}</strong> for ${event.title}.</p>
+      ${
+        event.whatsappGroupLink
+          ? `<p>Join the trip's WhatsApp group here: <a href="${event.whatsappGroupLink}">${event.whatsappGroupLink}</a></p>`
+          : ''
+      }
     `),
   });
 }
@@ -139,6 +189,19 @@ export function sendEventReminderEmail(user, event) {
     html: wrapper(`
       <h2>${event.title} is coming up soon</h2>
       <p>Just a reminder — this trip starts on ${new Date(event.startDate).toLocaleDateString()}. Check the event page for the full itinerary.</p>
+    `),
+  });
+}
+
+export function sendAnnouncementEmail(toEmail, message, url) {
+  return sendEmail({
+    to: toEmail,
+    subject: 'Announcement from GAC',
+    type: 'event_reminder',
+    html: wrapper(`
+      <h2>Announcement</h2>
+      <p>${message}</p>
+      ${url ? `<p><a href="${url}">${url}</a></p>` : ''}
     `),
   });
 }

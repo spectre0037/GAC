@@ -9,6 +9,8 @@ import { countActiveHeadcount, promoteFromWaitlistIfSlotOpen } from '../utils/wa
 import { sendRegistrationReceivedEmail, sendApprovedEmail, sendRejectedEmail } from '../services/emailService.js';
 import { generateTicketCode } from '../utils/ticketCode.js';
 import { eventForms } from '../db/schema/index.js';
+import { sendAdminNewRegistrationEmail } from '../services/emailService.js';
+
 
 const submitRegistrationSchema = z.object({
     fullName: z.string().trim().min(2, 'Full name is required'),
@@ -110,6 +112,11 @@ export const submitRegistration = asyncHandler(async (req, res) => {
         .returning();
 
     sendRegistrationReceivedEmail(req.user, event).catch(() => { });
+    db.select().from(users).where(inArray(users.role, ['event_coordinator', 'super_admin'])).then((admins) => {
+    admins.forEach((admin) => {
+      sendAdminNewRegistrationEmail(admin, data.fullName, event).catch(() => {});
+    });
+  });
     res.status(201).json({ success: true, registration });
 });
 

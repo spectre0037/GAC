@@ -1,23 +1,20 @@
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { users } from '../db/schema/index.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
+import { generateOtp, OTP_EXPIRY_MINUTES } from '../utils/otp.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { sendWelcomeEmail } from '../services/emailService.js';
 import { uploadBufferToCloudinary } from '../services/cloudinaryService.js';
+import { sendOtpEmail, sendWelcomeEmail, sendAdminNewUserEmail } from '../services/emailService.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, 'Full name must be at least 2 characters'),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(EMAIL_REGEX, 'Please enter a valid email address'),
+  email: z.string().trim().toLowerCase().regex(EMAIL_REGEX, 'Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   regNo: z.string().trim().optional(),
   whatsappNumber: z.string().trim().optional(),
@@ -28,16 +25,32 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const otpSchema = z.object({
+  email: z.string().trim().toLowerCase().regex(EMAIL_REGEX, 'Please enter a valid email address'),
+  otp: z.string().trim().length(6, 'Enter the 6-digit code'),
+});
+
+const resendSchema = z.object({
+  email: z.string().trim().toLowerCase().regex(EMAIL_REGEX, 'Please enter a valid email address'),
+});
+
 function sanitizeUser(user) {
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash, otpCodeHash, otpExpiresAt, ...safeUser } = user;
   return safeUser;
+}
+
+async function issueOtp(userId, email, fullName) {
+  const otp = generateOtp();
+  const otpCodeHash = await hashPassword(otp);
+  const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+  await db.update(users).set({ otpCodeHash, otpExpiresAt }).where(eq(users.id, userId));
+  sendOtpEmail({ email, fullName }, otp).catch(() => {});
 }
 
 export const signup = asyncHandler(async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(parsed.error.issues[0].message, 400);
-  }
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
   const { fullName, email, password, regNo, whatsappNumber } = parsed.data;
 
   const [existing] = await db.select().from(users).where(eq(users.email, email));
@@ -55,37 +68,87 @@ export const signup = asyncHandler(async (req, res) => {
       passwordHash,
       regNo: regNo || null,
       whatsappNumber: whatsappNumber || null,
-      role: 'student', // every signup defaults to student; roles are appointed by super_admin only
+      role: 'student',
+      emailVerified: false,
     })
     .returning();
 
-  sendWelcomeEmail(newUser).catch(() => { }); // fire-and-forget, never blocks signup
-
-  const token = signToken({ userId: newUser.id, role: newUser.role });
+  await issueOtp(newUser.id, newUser.email, newUser.fullName);
 
   res.status(201).json({
     success: true,
-    message: 'Account created successfully.',
-    token,
-    user: sanitizeUser(newUser),
+    message: 'Account created. Check your email for a verification code.',
+    email: newUser.email,
   });
+});
+
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const parsed = otpSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
+  const { email, otp } = parsed.data;
+
+  const [user] = await db.select().from(users).where(eq(users.email, email));
+  if (!user) throw new AppError('No account found with this email.', 404);
+  if (user.emailVerified) throw new AppError('This account is already verified.', 400);
+  if (!user.otpCodeHash || !user.otpExpiresAt || new Date() > new Date(user.otpExpiresAt)) {
+    throw new AppError('This code has expired. Request a new one.', 400);
+  }
+
+  const isMatch = await comparePassword(otp, user.otpCodeHash);
+  if (!isMatch) throw new AppError('Incorrect code. Please try again.', 400);
+
+  const [verifiedUser] = await db
+    .update(users)
+    .set({ emailVerified: true, otpCodeHash: null, otpExpiresAt: null, updatedAt: new Date() })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  sendWelcomeEmail(verifiedUser).catch(() => {});
+
+  db.select().from(users).where(eq(users.role, 'super_admin')).then((admins) => {
+    admins.forEach((admin) => sendAdminNewUserEmail(admin, verifiedUser).catch(() => {}));
+  });
+
+  const token = signToken({ userId: verifiedUser.id, role: verifiedUser.role });
+
+  res.json({
+    success: true,
+    message: 'Email verified.',
+    token,
+    user: sanitizeUser(verifiedUser),
+  });
+});
+
+export const resendOtp = asyncHandler(async (req, res) => {
+  const parsed = resendSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
+
+  const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email));
+  if (!user) throw new AppError('No account found with this email.', 404);
+  if (user.emailVerified) throw new AppError('This account is already verified.', 400);
+
+  await issueOtp(user.id, user.email, user.fullName);
+  res.json({ success: true, message: 'A new code has been sent.' });
 });
 
 export const login = asyncHandler(async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(parsed.error.issues[0].message, 400);
-  }
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
   const { email, password } = parsed.data;
 
   const [user] = await db.select().from(users).where(eq(users.email, email));
-  if (!user) {
-    throw new AppError('Invalid email or password.', 401);
-  }
+  if (!user) throw new AppError('Invalid email or password.', 401);
 
   const isMatch = await comparePassword(password, user.passwordHash);
-  if (!isMatch) {
-    throw new AppError('Invalid email or password.', 401);
+  if (!isMatch) throw new AppError('Invalid email or password.', 401);
+
+  if (!user.emailVerified) {
+    return res.status(403).json({
+      success: false,
+      message: 'Please verify your email before logging in.',
+      needsVerification: true,
+      email: user.email,
+    });
   }
 
   const token = signToken({ userId: user.id, role: user.role });
@@ -99,7 +162,6 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  // req.user is already attached and sanitized by requireAuth middleware
   res.json({ success: true, user: req.user });
 });
 
@@ -111,9 +173,7 @@ const updateProfileSchema = z.object({
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const parsed = updateProfileSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new AppError(parsed.error.issues[0].message, 400);
-  }
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
 
   const updates = { updatedAt: new Date() };
   if (parsed.data.fullName !== undefined) updates.fullName = parsed.data.fullName;

@@ -25,8 +25,10 @@ export const events = pgTable('events', {
   ticketPrice: decimal('ticket_price', { precision: 10, scale: 2 }).notNull().default('0'),
   status: eventStatusEnum('status').notNull().default('draft'),
   coverImageUrl: text('cover_image_url'),
+  whatsappGroupLink: text('whatsapp_group_link'),
   // Only Event Coordinator can create/publish — enforced at API layer, tracked here for audit
   createdBy: integer('created_by').references(() => users.id),
+  
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

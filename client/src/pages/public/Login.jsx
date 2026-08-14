@@ -1,27 +1,27 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Login() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setFormError('');
-
+    setFormError("");
     const result = await login({ email, password });
-
     if (result.success) {
-      navigate('/dashboard');
+      navigate("/dashboard");
+    } else if (result.needsVerification) {
+      navigate("/verify-otp", { state: { email: result.email } });
     } else {
       setFormError(result.message);
     }
@@ -30,10 +30,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#EBF2F2] p-4 sm:p-6 lg:p-8">
       <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-7xl overflow-hidden rounded-[2rem] bg-white shadow-[0_30px_100px_rgba(26,43,72,0.12)] sm:min-h-[calc(100vh-3rem)] lg:min-h-[calc(100vh-4rem)]">
-
         {/* Left Visual Panel */}
         <div className="relative hidden overflow-hidden bg-[#1A2B48] lg:flex lg:w-[52%]">
-
           {/* Decorative circles */}
           <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full border border-[#88B3D8]/15" />
 
@@ -51,7 +49,6 @@ export default function Login() {
 
           {/* Content */}
           <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-bold text-[#1A2B48]">
@@ -71,7 +68,6 @@ export default function Login() {
 
             {/* Main Message */}
             <div className="relative max-w-lg pb-20">
-
               <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-[#88B3D8]">
                 Welcome back
               </p>
@@ -87,8 +83,8 @@ export default function Login() {
               <div className="mt-7 h-px w-16 bg-[#88B3D8]" />
 
               <p className="mt-6 max-w-sm text-sm leading-7 text-white/50">
-                Sign in to manage your trips, tickets, and upcoming
-                adventures with GIKI Adventure Club.
+                Sign in to manage your trips, tickets, and upcoming adventures
+                with GIKI Adventure Club.
               </p>
             </div>
 
@@ -107,12 +103,8 @@ export default function Login() {
 
         {/* Right Form Panel */}
         <div className="flex w-full flex-col justify-center px-7 py-12 sm:px-12 lg:w-[48%] lg:px-16 xl:px-20">
-
           {/* Mobile Logo */}
-          <Link
-            to="/"
-            className="mb-12 flex items-center gap-3 lg:hidden"
-          >
+          <Link to="/" className="mb-12 flex items-center gap-3 lg:hidden">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1A2B48] text-sm font-bold text-white">
               G
             </div>
@@ -129,7 +121,6 @@ export default function Login() {
           </Link>
 
           <div className="mx-auto w-full max-w-md">
-
             {/* Header */}
             <div className="mb-10">
               <div className="mb-5 flex items-center gap-3">
@@ -152,11 +143,7 @@ export default function Login() {
             </div>
 
             {/* Form */}
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-col gap-6"
-            >
-
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               {/* Email */}
               <div className="flex flex-col gap-2">
                 <Label
@@ -200,9 +187,7 @@ export default function Login() {
               {/* Error */}
               {formError && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-                  <p className="text-sm text-red-600">
-                    {formError}
-                  </p>
+                  <p className="text-sm text-red-600">{formError}</p>
                 </div>
               )}
 
@@ -213,13 +198,11 @@ export default function Login() {
                 className="mt-2 h-14 w-full rounded-full bg-[#1A2B48] px-6 text-sm font-semibold text-white shadow-lg shadow-[#1A2B48]/10 transition-all duration-300 hover:bg-[#3D6BB4] hover:shadow-xl disabled:opacity-60"
               >
                 {isLoading ? (
-                  'Logging in...'
+                  "Logging in..."
                 ) : (
                   <>
                     Log In
-                    <span className="ml-auto text-lg">
-                      ↗
-                    </span>
+                    <span className="ml-auto text-lg">↗</span>
                   </>
                 )}
               </Button>
@@ -236,7 +219,7 @@ export default function Login() {
               </div>
 
               <p className="text-center text-sm text-[#688BB0]">
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Link
                   to="/signup"
                   className="font-semibold text-[#3D6BB4] transition-colors hover:text-[#1A2B48]"
@@ -252,7 +235,6 @@ export default function Login() {
               <span className="h-1.5 w-1.5 rounded-full bg-[#5F97DF]" />
               <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
             </div>
-
           </div>
         </div>
       </div>

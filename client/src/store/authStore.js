@@ -20,8 +20,8 @@ export const useAuthStore = create(
             regNo,
             whatsappNumber,
           });
-          set({ user: data.user, token: data.token, isLoading: false });
-          return { success: true };
+          set({ isLoading: false });
+          return { success: true, email: data.email };
         } catch (err) {
           const message = err.response?.data?.message || 'Signup failed. Please try again.';
           set({ error: message, isLoading: false });
@@ -36,9 +36,31 @@ export const useAuthStore = create(
           set({ user: data.user, token: data.token, isLoading: false });
           return { success: true };
         } catch (err) {
+          set({ isLoading: false });
+          if (err.response?.data?.needsVerification) {
+            return { success: false, needsVerification: true, email: err.response.data.email };
+          }
           const message = err.response?.data?.message || 'Login failed. Please try again.';
-          set({ error: message, isLoading: false });
+          set({ error: message });
           return { success: false, message };
+        }
+      },
+      verifyOtp: async ({ email, otp }) => {
+        try {
+          const { data } = await api.post('/auth/verify-otp', { email, otp });
+          set({ user: data.user, token: data.token });
+          return { success: true };
+        } catch (err) {
+          return { success: false, message: err.response?.data?.message || 'Verification failed.' };
+        }
+      },
+
+      resendOtp: async (email) => {
+        try {
+          await api.post('/auth/resend-otp', { email });
+          return { success: true };
+        } catch (err) {
+          return { success: false, message: err.response?.data?.message || 'Failed to resend code.' };
         }
       },
 

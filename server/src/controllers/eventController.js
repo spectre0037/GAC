@@ -36,6 +36,7 @@ const createEventSchema = z.object({
   endDate: z.string().optional(),
   capacity: z.coerce.number().int().positive().max(200).optional(),
   ticketPrice: z.coerce.number().nonnegative().optional(),
+  whatsappGroupLink: z.string().trim().url('Must be a valid URL').optional().or(z.literal('')),
 });
 
 const updateEventSchema = createEventSchema.partial();
@@ -117,6 +118,8 @@ export const updateEvent = asyncHandler(async (req, res) => {
   const eventId = Number(req.params.id);
   if (Number.isNaN(eventId)) throw new AppError('Invalid event id.', 400);
 
+  if (data.whatsappGroupLink !== undefined) updates.whatsappGroupLink = data.whatsappGroupLink || null;
+  
   const parsed = updateEventSchema.safeParse(req.body);
   if (!parsed.success) {
     throw new AppError(parsed.error.issues[0].message, 400);

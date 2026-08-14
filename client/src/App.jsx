@@ -23,6 +23,8 @@ import CheckInScan from '@/pages/admin/CheckInScan';
 import HistoryManager from '@/pages/admin/HistoryManager';
 import FemaleListManager from '@/pages/admin/FemaleListManager';
 import FemaleListPrint from '@/pages/admin/FemaleListPrint';
+import Notifications from '@/pages/user/Notifications';
+import VerifyOtp from '@/pages/public/VerifyOtp';
 
 function App() {
   return (
@@ -33,12 +35,21 @@ function App() {
       <Route path="/events/:slug" element={<EventRegister />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/verify-otp" element={<VerifyOtp />} />
 
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Notifications />
           </ProtectedRoute>
         }
       />

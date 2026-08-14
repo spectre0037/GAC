@@ -27,14 +27,12 @@ export default function Signup() {
     }));
   }
 
-  async function handleSubmit(e) {
+async function handleSubmit(e) {
     e.preventDefault();
     setFormError('');
-
     const result = await signup(form);
-
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/verify-otp', { state: { email: result.email } });
     } else {
       setFormError(result.message);
     }

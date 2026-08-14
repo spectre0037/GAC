@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
 import { roleEnum } from './enums.js';
 
 export const users = pgTable('users', {
@@ -10,6 +10,9 @@ export const users = pgTable('users', {
   regNo: varchar('reg_no', { length: 50 }),
   whatsappNumber: varchar('whatsapp_number', { length: 20 }),
   avatarUrl: text('avatar_url'),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  otpCodeHash: text('otp_code_hash'),
+  otpExpiresAt: timestamp('otp_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -105,6 +105,15 @@ export default function EventCoordinatorDashboard() {
       setCreating(false);
     }
   }
+  async function handleSaveWhatsappLink(eventId, link) {
+    setError('');
+    try {
+      await api.patch(`/events/${eventId}`, { whatsappGroupLink: link });
+      fetchEvents();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save WhatsApp link.');
+    }
+  }
 
   async function handleStatusChange(eventId, newStatus) {
     setError('');
@@ -474,6 +483,19 @@ export default function EventCoordinatorDashboard() {
                         focus-visible:ring-[#88B3D8]
                       "
                     />
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        defaultValue={event.whatsappGroupLink || ''}
+                        placeholder="WhatsApp group link for this trip"
+                        className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs"
+                        onBlur={(e) => {
+                          if (e.target.value !== (event.whatsappGroupLink || '')) {
+                            handleSaveWhatsappLink(event.id, e.target.value);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* BUTTON */}

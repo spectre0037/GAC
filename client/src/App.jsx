@@ -54,6 +54,14 @@ function App() {
         }
       />
       <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Notifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/checkin/:code"
         element={
           <ProtectedRoute allowedRoles={['event_coordinator', 'master_logistics', 'super_admin']}>

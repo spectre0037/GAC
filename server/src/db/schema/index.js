@@ -10,3 +10,4 @@ export * from './logs.js';
 export * from './relations.js';
 export * from './history.js';
 export * from './femaleList.js';
+export * from './notifications.js';

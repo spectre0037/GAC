@@ -23,6 +23,7 @@ import CheckInScan from '@/pages/admin/CheckInScan';
 import HistoryManager from '@/pages/admin/HistoryManager';
 import FemaleListManager from '@/pages/admin/FemaleListManager';
 import FemaleListPrint from '@/pages/admin/FemaleListPrint';
+import Notifications from '@/pages/user/Notifications';
 
 function App() {
   return (
@@ -39,6 +40,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Notifications />
           </ProtectedRoute>
         }
       />

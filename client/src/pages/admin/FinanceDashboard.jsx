@@ -1,58 +1,90 @@
-import { useEffect, useState } from "react";
-import api from "@/lib/axios";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import EventPicker from "./EventPicker";
-import AdminLayout from "@/components/admin/AdminLayout";
+import { useEffect, useState, useCallback } from 'react';
+import api from '@/lib/axios';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from '@/components/ui/card';
+
+import AdminLayout from '@/components/admin/AdminLayout';
+import SyncStatusBadge from '@/components/SyncStatusBadge';
+import { useOnlineSync } from '@/hooks/useOnlineSync';
+import {
+  addToQueue,
+  getQueueForEvent,
+} from '@/lib/offlineQueue';
+
+import EventPicker from './EventPicker';
 
 const CATEGORIES = [
-  "logistics",
-  "operations",
-  "transport",
-  "food",
-  "water",
-  "misc",
+  'logistics',
+  'operations',
+  'transport',
+  'food',
+  'water',
+  'misc',
 ];
 
 const PHASES = [
-  { value: "pre_event", label: "Pre-Event" },
-  { value: "post_event", label: "Post-Event" },
+  {
+    value: 'pre_event',
+    label: 'Pre-Event',
+  },
+  {
+    value: 'post_event',
+    label: 'Post-Event',
+  },
 ];
 
 const emptyForm = {
-  phase: "pre_event",
-  category: "logistics",
-  description: "",
-  amount: "",
+  phase: 'pre_event',
+  category: 'logistics',
+  description: '',
+  amount: '',
 };
 
 const CATEGORY_STYLES = {
-  logistics: "bg-amber-50 text-amber-700",
-  operations: "bg-blue-50 text-blue-700",
-  transport: "bg-violet-50 text-violet-700",
-  food: "bg-emerald-50 text-emerald-700",
-  water: "bg-cyan-50 text-cyan-700",
-  misc: "bg-slate-100 text-slate-600",
+  logistics: 'bg-blue-50 text-blue-700',
+  operations: 'bg-indigo-50 text-indigo-700',
+  transport: 'bg-cyan-50 text-cyan-700',
+  food: 'bg-amber-50 text-amber-700',
+  water: 'bg-sky-50 text-sky-700',
+  misc: 'bg-slate-100 text-slate-600',
 };
+
+function formatCategory(category) {
+  if (!category) return '';
+
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+function formatPhase(phase) {
+  return phase?.replace('_', '-') || '';
+}
+
+function formatAmount(amount) {
+  return Number(amount || 0).toLocaleString('en-PK');
+}
 
 export default function FinanceDashboard() {
   const [eventId, setEventId] = useState(null);
   const [items, setItems] = useState([]);
+  const [queuedItems, setQueuedItems] = useState([]);
   const [summary, setSummary] = useState(null);
+
   const [form, setForm] = useState(emptyForm);
-  const [error, setError] = useState("");
+
+  const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (eventId) {
-      fetchAll();
-    }
-  }, [eventId]);
+  const fetchAll = useCallback(async () => {
+    if (!eventId) return;
 
-  async function fetchAll() {
-    setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const [itemsRes, summaryRes] = await Promise.all([
@@ -65,32 +97,94 @@ export default function FinanceDashboard() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Failed to load budget data."
+          'Failed to load budget data. You may need an internet connection.'
       );
-    } finally {
-      setLoading(false);
     }
+
+    setQueuedItems(
+      getQueueForEvent(eventId, 'budget_item')
+    );
+  }, [eventId]);
+
+  const {
+    isOnline,
+    pendingCount,
+    syncing,
+    manualSync,
+  } = useOnlineSync(fetchAll);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  function handleEventChange(id) {
+    setEventId(id);
+    setItems([]);
+    setSummary(null);
+    setQueuedItems([]);
+    setEditingId(null);
+    setForm(emptyForm);
+    setError('');
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
+    setError('');
 
-    try {
-      if (editingId) {
-        await api.patch(`/budget/${editingId}`, form);
-      } else {
-        await api.post(`/budget/events/${eventId}`, form);
+    if (!eventId) return;
+
+    if (editingId) {
+      try {
+        await api.patch(
+          `/budget/${editingId}`,
+          form
+        );
+
+        setForm(emptyForm);
+        setEditingId(null);
+
+        fetchAll();
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+            'Editing requires connectivity. Try again once you are back online.'
+        );
       }
 
+      return;
+    }
+
+    try {
+      await api.post(
+        `/budget/events/${eventId}`,
+        form
+      );
+
       setForm(emptyForm);
-      setEditingId(null);
+
       fetchAll();
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to save entry."
-      );
+      if (!err.response) {
+        addToQueue(
+          'budget_item',
+          eventId,
+          form
+        );
+
+        setForm(emptyForm);
+
+        setQueuedItems(
+          getQueueForEvent(
+            eventId,
+            'budget_item'
+          )
+        );
+      } else {
+        setError(
+          err.response?.data?.message ||
+            'Failed to save budget entry.'
+        );
+      }
     }
   }
 
@@ -106,714 +200,1313 @@ export default function FinanceDashboard() {
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior: 'smooth',
     });
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Delete this budget entry?")) return;
-
-    setError("");
-
-    try {
-      await api.delete(`/budget/${id}`);
-      fetchAll();
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to delete."
-      );
-    }
-  }
-
-  function handleCancelEdit() {
+  function cancelEdit() {
     setEditingId(null);
     setForm(emptyForm);
   }
 
-  function formatCategory(category) {
-    return (
-      category.charAt(0).toUpperCase() +
-      category.slice(1)
-    );
-  }
+  async function handleDelete(id) {
+    if (
+      !window.confirm(
+        'Delete this budget entry?'
+      )
+    ) {
+      return;
+    }
 
-  function formatPhase(phase) {
-    return phase
-      .replace("_", "-")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    setError('');
+
+    try {
+      await api.delete(`/budget/${id}`);
+
+      fetchAll();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          'Deleting requires connectivity.'
+      );
+    }
   }
 
   return (
     <AdminLayout>
-      <div className="min-h-screen px-5 py-8 md:px-8 lg:px-12">
-        <div className="mx-auto max-w-7xl">
-
+      <div className="min-h-screen bg-[#EBF2F2]">
+        <div
+          className="
+            mx-auto
+            w-full
+            max-w-7xl
+            min-w-0
+            px-4
+            pb-10
+            pt-20
+            sm:px-6
+            sm:pt-20
+            md:px-8
+            md:pt-10
+            lg:px-10
+          "
+        >
           {/* =====================================================
               HEADER
           ====================================================== */}
 
-          <div className="mb-8">
+          <header className="mb-7">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#5F97DF]" />
 
-            <div className="mb-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3D6BB4]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
-              Finance & Budget
+              <p
+                className="
+                  text-[10px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.18em]
+                  text-[#688BB0]
+                  sm:text-xs
+                "
+              >
+                GAC / Finance
+              </p>
             </div>
 
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-
-              <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#1A2B48] md:text-4xl">
-                  Finance Dashboard
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
+                <h1
+                  className="
+                    text-3xl
+                    font-semibold
+                    tracking-tight
+                    text-[#1A2B48]
+                    sm:text-4xl
+                    md:text-5xl
+                  "
+                >
+                  Manage the numbers.
                 </h1>
 
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                  Track event expenses, manage budget entries,
-                  and keep every financial detail organized.
+                <p
+                  className="
+                    mt-2
+                    max-w-2xl
+                    text-sm
+                    leading-6
+                    text-[#688BB0]
+                    sm:text-base
+                  "
+                >
+                  Track event expenses, manage budget
+                  entries, and keep financial records
+                  synchronized even when you're offline.
                 </p>
               </div>
-
-              {summary && (
-                <div className="rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-200/70">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    Grand Total
-                  </p>
-
-                  <p className="mt-1 text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                    Rs. {summary.grandTotal}
-                  </p>
-                </div>
-              )}
-
             </div>
-          </div>
+          </header>
 
           {/* =====================================================
-              EVENT SELECTOR
+              EVENT PICKER + SYNC
           ====================================================== */}
 
-          <section className="mb-8 rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-slate-200/70 md:p-7">
-
-            <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#3D6BB4]">
-                  Event Selection
-                </p>
-
-                <h2 className="mt-1 text-base font-semibold text-[#1A2B48]">
-                  Select an Event
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Choose an event to view and manage its budget.
-                </p>
-              </div>
-
-              {eventId && (
-                <span className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
-                  Budget Active
-                </span>
-              )}
-
-            </div>
-
-            <div className="max-w-md">
+          <div
+            className="
+              mb-6
+              grid
+              grid-cols-1
+              gap-4
+              lg:grid-cols-[1fr_auto]
+              lg:items-end
+            "
+          >
+            <div
+              className="
+                rounded-[24px]
+                border
+                border-white/70
+                bg-white/70
+                p-4
+                shadow-sm
+                backdrop-blur-sm
+                sm:p-5
+              "
+            >
               <EventPicker
                 selectedEventId={eventId}
-                onSelect={setEventId}
+                onSelect={handleEventChange}
               />
             </div>
 
-          </section>
+            <div className="flex lg:justify-end">
+              <SyncStatusBadge
+                isOnline={isOnline}
+                pendingCount={pendingCount}
+                syncing={syncing}
+                onSync={manualSync}
+              />
+            </div>
+          </div>
 
           {/* =====================================================
               ERROR
           ====================================================== */}
 
           {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-semibold">
-                !
-              </span>
-
-              <span>{error}</span>
-
+            <div
+              className="
+                mb-6
+                rounded-2xl
+                border
+                border-red-200
+                bg-red-50
+                px-4
+                py-3
+                text-sm
+                leading-5
+                text-red-700
+                sm:px-5
+              "
+            >
+              {error}
             </div>
           )}
 
           {/* =====================================================
-              EMPTY STATE
+              NO EVENT
           ====================================================== */}
 
           {!eventId ? (
-            <div className="flex min-h-[360px] items-center justify-center rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
-
-              <div className="text-center">
-
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EBF2F2] text-xl text-slate-400">
-                  Rs
-                </div>
-
-                <p className="text-sm font-medium text-[#1A2B48]">
-                  Select an event
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Choose an event above to view its financial data.
-                </p>
-
+            <div
+              className="
+                overflow-hidden
+                rounded-[28px]
+                bg-[#1A2B48]
+                px-6
+                py-12
+                text-center
+                shadow-xl
+                sm:px-10
+                sm:py-16
+              "
+            >
+              <div
+                className="
+                  mx-auto
+                  mb-5
+                  flex
+                  h-14
+                  w-14
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-[#88B3D8]/15
+                  text-2xl
+                  text-[#88B3D8]
+                "
+              >
+                ₨
               </div>
 
+              <h2
+                className="
+                  text-xl
+                  font-semibold
+                  text-white
+                  sm:text-2xl
+                "
+              >
+                Select an adventure
+              </h2>
+
+              <p
+                className="
+                  mx-auto
+                  mt-2
+                  max-w-md
+                  text-sm
+                  leading-6
+                  text-[#B9CDE0]
+                "
+              >
+                Choose an event above to view its
+                budget, add expenses, and manage
+                financial records.
+              </p>
             </div>
           ) : (
             <>
-              {/* =====================================================
+              {/* =================================================
                   SUMMARY
-              ====================================================== */}
+              ================================================== */}
 
               {summary && (
-                <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-
-                  {/* PRE EVENT */}
-
-                  <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
-
-                    <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Pre-Event
+                <section className="mb-7">
+                  <div className="mb-4">
+                    <p
+                      className="
+                        text-[10px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.18em]
+                        text-[#688BB0]
+                      "
+                    >
+                      Financial overview
                     </p>
 
-                    <div className="mt-3 flex items-end justify-between">
-
-                      <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                        Rs. {summary.preEventTotal}
-                      </p>
-
-                      <span className="h-2 w-2 rounded-full bg-blue-500" />
-
-                    </div>
-
+                    <h2
+                      className="
+                        mt-1
+                        text-xl
+                        font-semibold
+                        text-[#1A2B48]
+                        sm:text-2xl
+                      "
+                    >
+                      Budget snapshot
+                    </h2>
                   </div>
 
-                  {/* POST EVENT */}
+                  <div
+                    className="
+                      grid
+                      grid-cols-2
+                      gap-3
+                      sm:grid-cols-2
+                      lg:grid-cols-4
+                    "
+                  >
+                    {/* PRE EVENT */}
 
-                  <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+                    <div
+                      className="
+                        rounded-[22px]
+                        border
+                        border-white/70
+                        bg-white/75
+                        p-4
+                        shadow-sm
+                        backdrop-blur-sm
+                        sm:p-5
+                      "
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <p
+                          className="
+                            text-[10px]
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[#688BB0]
+                          "
+                        >
+                          Pre-Event
+                        </p>
 
-                    <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Post-Event
-                    </p>
+                        <span className="h-2 w-2 rounded-full bg-[#88B3D8]" />
+                      </div>
 
-                    <div className="mt-3 flex items-end justify-between">
-
-                      <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                        Rs. {summary.postEventTotal}
+                      <p
+                        className="
+                          break-words
+                          text-xl
+                          font-semibold
+                          text-[#1A2B48]
+                          sm:text-2xl
+                        "
+                      >
+                        Rs.{' '}
+                        {formatAmount(
+                          summary.preEventTotal
+                        )}
                       </p>
-
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-
                     </div>
 
-                  </div>
+                    {/* POST EVENT */}
 
-                  {/* RECKY */}
+                    <div
+                      className="
+                        rounded-[22px]
+                        border
+                        border-white/70
+                        bg-white/75
+                        p-4
+                        shadow-sm
+                        backdrop-blur-sm
+                        sm:p-5
+                      "
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <p
+                          className="
+                            text-[10px]
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[#688BB0]
+                          "
+                        >
+                          Post-Event
+                        </p>
 
-                  <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+                        <span className="h-2 w-2 rounded-full bg-[#5F97DF]" />
+                      </div>
 
-                    <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Recky
-                    </p>
-
-                    <div className="mt-3 flex items-end justify-between">
-
-                      <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                        Rs. {summary.reckyTotal}
+                      <p
+                        className="
+                          break-words
+                          text-xl
+                          font-semibold
+                          text-[#1A2B48]
+                          sm:text-2xl
+                        "
+                      >
+                        Rs.{' '}
+                        {formatAmount(
+                          summary.postEventTotal
+                        )}
                       </p>
-
-                      <span className="h-2 w-2 rounded-full bg-amber-500" />
-
                     </div>
 
-                  </div>
+                    {/* RECKY */}
 
-                  {/* GRAND TOTAL */}
+                    <div
+                      className="
+                        rounded-[22px]
+                        border
+                        border-white/70
+                        bg-white/75
+                        p-4
+                        shadow-sm
+                        backdrop-blur-sm
+                        sm:p-5
+                      "
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <p
+                          className="
+                            text-[10px]
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[#688BB0]
+                          "
+                        >
+                          Recky
+                        </p>
 
-                  <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+                        <span className="h-2 w-2 rounded-full bg-[#3D6BB4]" />
+                      </div>
 
-                    <p className="truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Grand Total
-                    </p>
-
-                    <div className="mt-3 flex items-end justify-between">
-
-                      <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
-                        Rs. {summary.grandTotal}
+                      <p
+                        className="
+                          break-words
+                          text-xl
+                          font-semibold
+                          text-[#1A2B48]
+                          sm:text-2xl
+                        "
+                      >
+                        Rs.{' '}
+                        {formatAmount(
+                          summary.reckyTotal
+                        )}
                       </p>
-
-                      <span className="h-2 w-2 rounded-full bg-[#1A2B48]" />
-
                     </div>
 
-                  </div>
+                    {/* GRAND TOTAL */}
 
-                </div>
+                    <div
+                      className="
+                        rounded-[22px]
+                        bg-[#1A2B48]
+                        p-4
+                        shadow-md
+                        sm:p-5
+                      "
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <p
+                          className="
+                            text-[10px]
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[#88B3D8]
+                          "
+                        >
+                          Grand Total
+                        </p>
+
+                        <span className="h-2 w-2 rounded-full bg-[#88B3D8]" />
+                      </div>
+
+                      <p
+                        className="
+                          break-words
+                          text-xl
+                          font-semibold
+                          text-white
+                          sm:text-2xl
+                        "
+                      >
+                        Rs.{' '}
+                        {formatAmount(
+                          summary.grandTotal
+                        )}
+                      </p>
+
+                      <p
+                        className="
+                          mt-1
+                          text-[9px]
+                          leading-4
+                          text-[#B9CDE0]
+                        "
+                      >
+                        Excludes unsynced entries
+                      </p>
+                    </div>
+                  </div>
+                </section>
               )}
 
-              {/* =====================================================
-                  ADD / EDIT BUDGET
-              ====================================================== */}
+              {/* =================================================
+                  ADD / EDIT FORM
+              ================================================== */}
 
-              <section className="mb-8 overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
-
-                {/* Header */}
-
-                <div className="flex flex-col justify-between gap-4 border-b border-slate-100 px-5 py-5 md:flex-row md:items-center md:px-7">
-
-                  <div>
-
-                    <div className="mb-1 flex items-center gap-2">
-
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
-
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#3D6BB4]">
-                        Budget Control
+              <Card
+                className="
+                  mb-7
+                  overflow-hidden
+                  rounded-[28px]
+                  border-0
+                  bg-[#1A2B48]
+                  text-white
+                  shadow-xl
+                "
+              >
+                <CardHeader
+                  className="
+                    border-b
+                    border-white/10
+                    px-5
+                    py-5
+                    sm:px-7
+                    sm:py-6
+                  "
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p
+                        className="
+                          mb-2
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-[0.18em]
+                          text-[#88B3D8]
+                        "
+                      >
+                        {editingId
+                          ? 'Budget management'
+                          : 'New expense'}
                       </p>
 
+                      <CardTitle
+                        className="
+                          text-xl
+                          font-semibold
+                          text-white
+                          sm:text-2xl
+                        "
+                      >
+                        {editingId
+                          ? 'Edit Budget Entry'
+                          : 'Add Budget Entry'}
+                      </CardTitle>
                     </div>
 
-                    <h2 className="text-base font-semibold text-[#1A2B48]">
-                      {editingId
-                        ? "Edit Budget Entry"
-                        : "Add Budget Entry"}
-                    </h2>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      Record an expense for the selected event.
-                    </p>
-
+                    <div
+                      className="
+                        hidden
+                        h-10
+                        w-10
+                        shrink-0
+                        items-center
+                        justify-center
+                        rounded-xl
+                        bg-[#88B3D8]/15
+                        text-lg
+                        text-[#88B3D8]
+                        sm:flex
+                      "
+                    >
+                      ₨
+                    </div>
                   </div>
+                </CardHeader>
 
-                  <div className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
-                    {editingId ? "Editing Entry" : "New Entry"}
-                  </div>
-
-                </div>
-
-                {/* Form */}
-
-                <div className="px-5 py-6 md:px-7">
-
+                <CardContent
+                  className="
+                    px-5
+                    py-6
+                    sm:px-7
+                    sm:py-7
+                  "
+                >
                   <form
                     onSubmit={handleSubmit}
-                    className="grid grid-cols-1 gap-5 md:grid-cols-2"
+                    className="
+                      grid
+                      grid-cols-1
+                      gap-4
+                      sm:grid-cols-2
+                    "
                   >
-
                     {/* PHASE */}
 
-                    <div>
-
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="budget-phase"
+                        className="
+                          mb-2
+                          block
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          text-[#B9CDE0]
+                        "
+                      >
                         Phase
                       </label>
 
-                      <div className="relative">
-
-                        <select
-                          className="w-full appearance-none rounded-xl border-0 bg-[#F4F7F7] py-3 pl-3 pr-9 text-xs font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4]"
-                          value={form.phase}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              phase: e.target.value,
-                            }))
-                          }
-                        >
-                          {PHASES.map((p) => (
-                            <option
-                              key={p.value}
-                              value={p.value}
-                            >
-                              {p.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                          ↓
-                        </span>
-
-                      </div>
-
+                      <select
+                        id="budget-phase"
+                        value={form.phase}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            phase: e.target.value,
+                          }))
+                        }
+                        className="
+                          h-12
+                          w-full
+                          appearance-none
+                          rounded-xl
+                          border
+                          border-white/10
+                          bg-white/10
+                          px-4
+                          text-sm
+                          text-white
+                          outline-none
+                          transition
+                          focus:border-[#88B3D8]
+                          focus:ring-2
+                          focus:ring-[#88B3D8]/20
+                        "
+                      >
+                        {PHASES.map((p) => (
+                          <option
+                            key={p.value}
+                            value={p.value}
+                            className="bg-[#1A2B48] text-white"
+                          >
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* CATEGORY */}
 
-                    <div>
-
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="budget-category"
+                        className="
+                          mb-2
+                          block
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          text-[#B9CDE0]
+                        "
+                      >
                         Category
                       </label>
 
-                      <div className="relative">
-
-                        <select
-                          className="w-full appearance-none rounded-xl border-0 bg-[#F4F7F7] py-3 pl-3 pr-9 text-xs font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4]"
-                          value={form.category}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              category: e.target.value,
-                            }))
-                          }
-                        >
-                          {CATEGORIES.map((category) => (
-                            <option
-                              key={category}
-                              value={category}
-                            >
-                              {formatCategory(category)}
-                            </option>
-                          ))}
-                        </select>
-
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                          ↓
-                        </span>
-
-                      </div>
-
+                      <select
+                        id="budget-category"
+                        value={form.category}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            category: e.target.value,
+                          }))
+                        }
+                        className="
+                          h-12
+                          w-full
+                          appearance-none
+                          rounded-xl
+                          border
+                          border-white/10
+                          bg-white/10
+                          px-4
+                          text-sm
+                          text-white
+                          outline-none
+                          transition
+                          focus:border-[#88B3D8]
+                          focus:ring-2
+                          focus:ring-[#88B3D8]/20
+                        "
+                      >
+                        {CATEGORIES.map((category) => (
+                          <option
+                            key={category}
+                            value={category}
+                            className="bg-[#1A2B48] text-white"
+                          >
+                            {formatCategory(category)}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* DESCRIPTION */}
 
-                    <div className="md:col-span-2">
-
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="budget-description"
+                        className="
+                          mb-2
+                          block
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          text-[#B9CDE0]
+                        "
+                      >
                         Description
                       </label>
 
                       <Input
-                        placeholder="e.g. Transport for expedition team"
+                        id="budget-description"
+                        placeholder="e.g. Transport advance for Sharan trip"
                         value={form.description}
                         onChange={(e) =>
                           setForm((p) => ({
                             ...p,
-                            description: e.target.value,
+                            description:
+                              e.target.value,
                           }))
                         }
                         required
-                        className="h-11 rounded-xl border-0 bg-[#F4F7F7] text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
+                        className="
+                          h-12
+                          rounded-xl
+                          border-white/10
+                          bg-white/10
+                          text-white
+                          placeholder:text-white/35
+                          focus-visible:ring-[#88B3D8]
+                        "
                       />
-
                     </div>
 
                     {/* AMOUNT */}
 
-                    <div>
-
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Amount
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="budget-amount"
+                        className="
+                          mb-2
+                          block
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          text-[#B9CDE0]
+                        "
+                      >
+                        Amount (PKR)
                       </label>
 
-                      <div className="relative">
-
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
-                          Rs.
-                        </span>
-
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={form.amount}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              amount: e.target.value,
-                            }))
-                          }
-                          required
-                          className="h-11 rounded-xl border-0 bg-[#F4F7F7] pl-10 text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
-                        />
-
-                      </div>
-
+                      <Input
+                        id="budget-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={form.amount}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            amount: e.target.value,
+                          }))
+                        }
+                        required
+                        className="
+                          h-12
+                          rounded-xl
+                          border-white/10
+                          bg-white/10
+                          text-white
+                          placeholder:text-white/35
+                          focus-visible:ring-[#88B3D8]
+                        "
+                      />
                     </div>
 
                     {/* ACTIONS */}
 
-                    <div className="flex items-end gap-2">
-
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        className="h-11 rounded-xl bg-[#1A2B48] px-5 text-xs font-medium text-white shadow-none transition-all hover:bg-[#253b5f]"
-                      >
-                        {loading
-                          ? "Saving..."
-                          : editingId
-                            ? "Update Entry"
-                            : "Add Entry"}
-                      </Button>
-
+                    <div
+                      className="
+                        flex
+                        flex-col
+                        gap-2
+                        sm:items-end
+                        sm:justify-end
+                        sm:flex-row
+                      "
+                    >
                       {editingId && (
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={handleCancelEdit}
-                          className="h-11 rounded-xl border-0 bg-[#F4F7F7] px-5 text-xs font-medium text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100"
+                          onClick={cancelEdit}
+                          className="
+                            h-12
+                            w-full
+                            rounded-xl
+                            border-white/15
+                            bg-white/5
+                            text-white
+                            hover:bg-white/10
+                            hover:text-white
+                            sm:w-auto
+                          "
                         >
                           Cancel
                         </Button>
                       )}
 
+                      <Button
+                        type="submit"
+                        className="
+                          h-12
+                          w-full
+                          rounded-xl
+                          bg-[#88B3D8]
+                          px-7
+                          font-semibold
+                          text-[#1A2B48]
+                          shadow-sm
+                          hover:bg-[#A5C8E4]
+                          sm:w-auto
+                        "
+                      >
+                        {editingId
+                          ? 'Update Entry ↗'
+                          : 'Add Entry ↗'}
+                      </Button>
                     </div>
-
                   </form>
+                </CardContent>
+              </Card>
 
-                </div>
+              {/* =================================================
+                  QUEUED / OFFLINE ITEMS
+              ================================================== */}
 
-              </section>
+              {queuedItems.length > 0 && (
+                <Card
+                  className="
+                    mb-7
+                    overflow-hidden
+                    rounded-[26px]
+                    border
+                    border-amber-200
+                    bg-amber-50/70
+                    shadow-sm
+                  "
+                >
+                  <CardHeader className="px-5 py-5 sm:px-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p
+                          className="
+                            mb-1
+                            text-[10px]
+                            font-semibold
+                            uppercase
+                            tracking-[0.16em]
+                            text-amber-700
+                          "
+                        >
+                          Offline queue
+                        </p>
 
-              {/* =====================================================
-                  BUDGET ENTRIES
-              ====================================================== */}
-
-              <section className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
-
-                {/* Header */}
-
-                <div className="flex flex-col justify-between gap-4 border-b border-slate-100 px-5 py-5 md:flex-row md:items-center md:px-7">
-
-                  <div>
-
-                    <h2 className="text-base font-semibold text-[#1A2B48]">
-                      Budget Entries
-                    </h2>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      All recorded expenses for this event.
-                    </p>
-
-                  </div>
-
-                  <div className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
-                    {items.length}{" "}
-                    {items.length === 1
-                      ? "entry"
-                      : "entries"}
-                  </div>
-
-                </div>
-
-                {/* Loading */}
-
-                {loading ? (
-
-                  <div className="flex min-h-[280px] items-center justify-center">
-
-                    <div className="text-center">
-
-                      <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-[#3D6BB4]" />
-
-                      <p className="text-xs text-slate-400">
-                        Loading budget data...
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                ) : items.length === 0 ? (
-
-                  <div className="flex min-h-[280px] items-center justify-center">
-
-                    <div className="text-center">
-
-                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EBF2F2] text-xl text-slate-400">
-                        Rs
+                        <CardTitle
+                          className="
+                            text-lg
+                            font-semibold
+                            text-amber-950
+                          "
+                        >
+                          Waiting to Sync
+                        </CardTitle>
                       </div>
 
-                      <p className="text-sm font-medium text-[#1A2B48]">
-                        No budget entries
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        Add the first expense using the form above.
-                      </p>
-
+                      <span
+                        className="
+                          rounded-full
+                          bg-amber-100
+                          px-3
+                          py-1
+                          text-xs
+                          font-semibold
+                          text-amber-700
+                        "
+                      >
+                        {queuedItems.length}
+                      </span>
                     </div>
+                  </CardHeader>
 
-                  </div>
+                  <CardContent className="px-5 pb-5 sm:px-6">
+                    <div className="flex flex-col gap-2">
+                      {queuedItems.map((q) => (
+                        <div
+                          key={q.id}
+                          className="
+                            flex
+                            flex-col
+                            gap-3
+                            rounded-xl
+                            border
+                            border-amber-200/70
+                            bg-white/70
+                            p-3
+                            sm:flex-row
+                            sm:items-center
+                            sm:justify-between
+                          "
+                        >
+                          <div className="min-w-0">
+                            <p
+                              className="
+                                break-words
+                                text-sm
+                                font-medium
+                                text-[#1A2B48]
+                              "
+                            >
+                              {q.payload.description}
+                            </p>
 
-                ) : (
-
-                  <div className="overflow-x-auto">
-
-                    <table className="w-full min-w-[900px]">
-
-                      <thead>
-
-                        <tr className="border-b border-slate-100 bg-slate-50/50">
-
-                          <th className="px-7 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Description
-                          </th>
-
-                          <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Category
-                          </th>
-
-                          <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Phase
-                          </th>
-
-                          <th className="px-5 py-4 text-left text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Submitted By
-                          </th>
-
-                          <th className="px-5 py-4 text-right text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Amount
-                          </th>
-
-                          <th className="px-7 py-4 text-right text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                            Actions
-                          </th>
-
-                        </tr>
-
-                      </thead>
-
-                      <tbody>
-
-                        {items.map((item) => (
-
-                          <tr
-                            key={item.id}
-                            className="group border-b border-slate-100 last:border-0 transition-colors hover:bg-[#F7FAFA]"
-                          >
-
-                            {/* DESCRIPTION */}
-
-                            <td className="px-7 py-5">
-
-                              <p className="max-w-[260px] text-sm font-medium text-[#1A2B48]">
-                                {item.description}
-                              </p>
-
-                            </td>
-
-                            {/* CATEGORY */}
-
-                            <td className="px-5 py-5">
-
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                                  CATEGORY_STYLES[
-                                    item.category
-                                  ] ||
-                                  "bg-slate-100 text-slate-600"
-                                }`}
-                              >
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400">
                                 {formatCategory(
-                                  item.category
+                                  q.payload.category
                                 )}
                               </span>
 
-                            </td>
-
-                            {/* PHASE */}
-
-                            <td className="px-5 py-5">
-
-                              <span className="text-xs font-medium text-slate-500">
-                                {formatPhase(item.phase)}
+                              <span className="text-slate-300">
+                                ·
                               </span>
 
-                            </td>
-
-                            {/* SUBMITTED BY */}
-
-                            <td className="px-5 py-5">
-
-                              <span className="text-xs text-slate-500">
-                                {item.submittedByRole}
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                                {formatPhase(
+                                  q.payload.phase
+                                )}
                               </span>
+                            </div>
 
-                            </td>
+                            {q.status === 'failed' && (
+                              <p className="mt-1 text-xs text-red-600">
+                                {q.errorMessage}
+                              </p>
+                            )}
+                          </div>
 
-                            {/* AMOUNT */}
+                          <span
+                            className="
+                              shrink-0
+                              text-sm
+                              font-semibold
+                              text-[#1A2B48]
+                            "
+                          >
+                            Rs.{' '}
+                            {formatAmount(
+                              q.payload.amount
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                            <td className="px-5 py-5 text-right">
+              {/* =================================================
+                  BUDGET ENTRIES
+              ================================================== */}
 
-                              <p className="text-sm font-semibold text-[#1A2B48]">
-                                Rs. {item.amount}
+              <section>
+                <div
+                  className="
+                    mb-4
+                    flex
+                    flex-col
+                    gap-2
+                    sm:flex-row
+                    sm:items-end
+                    sm:justify-between
+                  "
+                >
+                  <div>
+                    <p
+                      className="
+                        text-[10px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.18em]
+                        text-[#688BB0]
+                      "
+                    >
+                      Expense records
+                    </p>
+
+                    <h2
+                      className="
+                        mt-1
+                        text-xl
+                        font-semibold
+                        text-[#1A2B48]
+                        sm:text-2xl
+                      "
+                    >
+                      Budget entries
+                    </h2>
+                  </div>
+
+                  <span
+                    className="
+                      w-fit
+                      rounded-full
+                      bg-white
+                      px-3
+                      py-1.5
+                      text-[10px]
+                      font-medium
+                      text-[#688BB0]
+                      shadow-sm
+                    "
+                  >
+                    {items.length}{' '}
+                    {items.length === 1
+                      ? 'entry'
+                      : 'entries'}
+                  </span>
+                </div>
+
+                {items.length === 0 ? (
+                  <div
+                    className="
+                      rounded-[26px]
+                      border
+                      border-dashed
+                      border-slate-200
+                      bg-white/60
+                      px-6
+                      py-12
+                      text-center
+                    "
+                  >
+                    <div
+                      className="
+                        mx-auto
+                        mb-4
+                        flex
+                        h-12
+                        w-12
+                        items-center
+                        justify-center
+                        rounded-2xl
+                        bg-[#EBF2F2]
+                        text-lg
+                        text-[#3D6BB4]
+                      "
+                    >
+                      ₨
+                    </div>
+
+                    <h3
+                      className="
+                        text-base
+                        font-semibold
+                        text-[#1A2B48]
+                      "
+                    >
+                      No budget entries yet
+                    </h3>
+
+                    <p
+                      className="
+                        mx-auto
+                        mt-1
+                        max-w-sm
+                        text-sm
+                        leading-5
+                        text-[#688BB0]
+                      "
+                    >
+                      Add the first expense for this
+                      event using the form above.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {items.map((item, index) => (
+                      <Card
+                        key={item.id}
+                        className="
+                          overflow-hidden
+                          rounded-[24px]
+                          border
+                          border-slate-200/70
+                          bg-white
+                          shadow-sm
+                          transition-all
+                          duration-200
+                          hover:shadow-md
+                        "
+                      >
+                        <CardContent
+                          className="
+                            p-4
+                            sm:p-5
+                          "
+                        >
+                          <div
+                            className="
+                              flex
+                              flex-col
+                              gap-4
+                              lg:flex-row
+                              lg:items-center
+                              lg:justify-between
+                            "
+                          >
+                            {/* LEFT */}
+
+                            <div className="flex min-w-0 flex-1 gap-3">
+                              <div
+                                className="
+                                  hidden
+                                  h-10
+                                  w-10
+                                  shrink-0
+                                  items-center
+                                  justify-center
+                                  rounded-xl
+                                  bg-[#EBF2F2]
+                                  text-xs
+                                  font-semibold
+                                  text-[#3D6BB4]
+                                  sm:flex
+                                "
+                              >
+                                {String(
+                                  index + 1
+                                ).padStart(2, '0')}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div
+                                  className="
+                                    flex
+                                    flex-wrap
+                                    items-center
+                                    gap-2
+                                  "
+                                >
+                                  <h3
+                                    className="
+                                      min-w-0
+                                      break-words
+                                      text-sm
+                                      font-semibold
+                                      text-[#1A2B48]
+                                    "
+                                  >
+                                    {item.description}
+                                  </h3>
+
+                                  <span
+                                    className={`
+                                      rounded-full
+                                      px-2.5
+                                      py-1
+                                      text-[9px]
+                                      font-semibold
+                                      uppercase
+                                      tracking-wider
+                                      ${
+                                        CATEGORY_STYLES[
+                                          item.category
+                                        ] ||
+                                        CATEGORY_STYLES.misc
+                                      }
+                                    `}
+                                  >
+                                    {formatCategory(
+                                      item.category
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div
+                                  className="
+                                    mt-2
+                                    flex
+                                    flex-wrap
+                                    items-center
+                                    gap-x-2
+                                    gap-y-1
+                                    text-[10px]
+                                    text-slate-400
+                                  "
+                                >
+                                  <span>
+                                    {formatPhase(
+                                      item.phase
+                                    )}
+                                  </span>
+
+                                  <span>·</span>
+
+                                  <span>
+                                    By{' '}
+                                    {item.submittedByRole ||
+                                      'Unknown'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* RIGHT */}
+
+                            <div
+                              className="
+                                flex
+                                flex-col
+                                gap-3
+                                border-t
+                                border-slate-100
+                                pt-3
+                                sm:flex-row
+                                sm:items-center
+                                sm:justify-between
+                                lg:border-0
+                                lg:pt-0
+                              "
+                            >
+                              <p
+                                className="
+                                  text-base
+                                  font-semibold
+                                  text-[#1A2B48]
+                                "
+                              >
+                                Rs.{' '}
+                                {formatAmount(
+                                  item.amount
+                                )}
                               </p>
 
-                            </td>
-
-                            {/* ACTIONS */}
-
-                            <td className="px-7 py-5 text-right">
-
-                              <div className="flex items-center justify-end gap-1">
-
-                                <button
-                                  type="button"
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() =>
                                     handleEdit(item)
                                   }
-                                  className="rounded-xl px-3 py-2 text-[10px] font-medium text-slate-400 transition-all hover:bg-[#EBF2F2] hover:text-[#3D6BB4]"
+                                  className="
+                                    rounded-xl
+                                    border-slate-200
+                                    text-[#3D6BB4]
+                                  "
                                 >
                                   Edit
-                                </button>
+                                </Button>
 
-                                <button
-                                  type="button"
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() =>
-                                    handleDelete(item.id)
+                                    handleDelete(
+                                      item.id
+                                    )
                                   }
-                                  className="rounded-xl px-3 py-2 text-[10px] font-medium text-slate-400 transition-all hover:bg-red-50 hover:text-red-600"
+                                  className="
+                                    rounded-xl
+                                    text-[#A34F4F]
+                                    hover:bg-[#FBECEC]
+                                    hover:text-[#8E3D3D]
+                                  "
                                 >
-                                  Remove
-                                </button>
-
+                                  Delete
+                                </Button>
                               </div>
-
-                            </td>
-
-                          </tr>
-
-                        ))}
-
-                      </tbody>
-
-                    </table>
-
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-
                 )}
-
               </section>
 
-              {/* =====================================================
-                  FOOTNOTE
-              ====================================================== */}
+              {/* =================================================
+                  FOOTER
+              ================================================== */}
 
-              <div className="mt-5 flex flex-col justify-between gap-2 px-2 text-[9px] text-slate-400 sm:flex-row">
-
-                <p>
-                  Budget changes are reflected immediately.
+              <div
+                className="
+                  mt-10
+                  flex
+                  flex-col
+                  gap-3
+                  border-t
+                  border-[#D6E1E6]
+                  pt-6
+                  sm:flex-row
+                  sm:items-center
+                  sm:justify-between
+                "
+              >
+                <p className="text-[10px] text-[#688BB0] sm:text-xs">
+                  GIKI Adventure Club · Finance Operations
                 </p>
 
-                <p>
-                  GIKI Adventure Club · Finance Portal
-                </p>
-
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#88B3D8]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#5F97DF]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
+                </div>
               </div>
-
             </>
           )}
-
         </div>
       </div>
     </AdminLayout>

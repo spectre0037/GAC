@@ -5,6 +5,7 @@ import {
   updateLineItem,
   deleteLineItem,
   getBudgetSummary,
+  attachLineItemReceipt,
 } from '../controllers/budgetController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
@@ -24,7 +25,12 @@ router.use(requireAuth, requireRole(...READ_ROLES));
 
 router.get('/events/:eventId', listLineItems);
 router.get('/events/:eventId/summary', getBudgetSummary);
-
+router.patch(
+  '/:id/receipt',
+  requireRole('finance_master', 'master_logistics', 'super_admin'),
+  upload.single('receipt'),
+  attachLineItemReceipt
+);
 router.post(
   '/events/:eventId',
   requireRole('finance_master', 'master_logistics', 'super_admin'),

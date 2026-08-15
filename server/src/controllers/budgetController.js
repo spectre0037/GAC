@@ -166,3 +166,22 @@ export const getBudgetSummary = asyncHandler(async (req, res) => {
 
   res.json({ success: true, summary });
 });
+
+export const attachLineItemReceipt = asyncHandler(async (req, res) => {
+  const itemId = Number(req.params.id);
+  if (Number.isNaN(itemId)) throw new AppError('Invalid item id.', 400);
+  if (!req.file) throw new AppError('No image file provided.', 400);
+
+  const [existing] = await db.select().from(budgetLineItems).where(eq(budgetLineItems.id, itemId));
+  if (!existing) throw new AppError('Budget item not found.', 404);
+
+  const result = await uploadBufferToCloudinary(req.file.buffer, 'budget-receipts');
+
+  const [updated] = await db
+    .update(budgetLineItems)
+    .set({ receiptImageUrl: result.secure_url, updatedAt: new Date() })
+    .where(eq(budgetLineItems.id, itemId))
+    .returning();
+
+  res.json({ success: true, item: updated });
+});

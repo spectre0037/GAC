@@ -13,6 +13,7 @@ const ROLE_LABELS = {
   vp_ops: "VP Operations",
   president: "President",
   super_admin: "Super Admin",
+  general_secretary: "General Secretary",
 };
 
 export default function Dashboard() {
@@ -67,15 +68,9 @@ export default function Dashboard() {
 
         setStats({
           total: regs.length,
-          approved: regs.filter(
-            (r) => r.status === "approved"
-          ).length,
-          pending: regs.filter(
-            (r) => r.status === "pending"
-          ).length,
-          waitlisted: regs.filter(
-            (r) => r.status === "waitlisted"
-          ).length,
+          approved: regs.filter((r) => r.status === "approved").length,
+          pending: regs.filter((r) => r.status === "pending").length,
+          waitlisted: regs.filter((r) => r.status === "waitlisted").length,
         });
       })
       .catch(() => {
@@ -88,79 +83,281 @@ export default function Dashboard() {
       });
   }, [isStudent]);
 
+  const firstName =
+    user?.fullName?.split(" ")[0] || "Member";
+
+  const roleLabel =
+    ROLE_LABELS[user?.role] ||
+    user?.role?.replaceAll("_", " ") ||
+    "Member";
+
+  const hasAdminTools =
+    isSuperAdmin ||
+    canManageEvents ||
+    isFinance ||
+    isLogistics ||
+    canViewBudget ||
+    isLeadership ||
+    canViewFemaleList;
+
   return (
     <AdminLayout>
       <main className="min-h-screen w-full overflow-x-hidden bg-[#EBF2F2]">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-10 lg:py-10 xl:px-12">
-          {/* =========================================================
+        <div
+          className="
+            mx-auto w-full max-w-7xl
+            px-4
+            pb-8
+            pt-20
+            sm:px-6 sm:pb-10 sm:pt-8
+            md:px-8 md:pt-10
+            lg:px-10
+            xl:px-12
+          "
+        >
+          {/* =====================================================
               WELCOME HERO
-          ========================================================== */}
+          ====================================================== */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="relative mb-7 overflow-hidden rounded-[1.5rem] bg-[#1A2B48] sm:mb-8 sm:rounded-[2rem]"
+            transition={{ duration: 0.55 }}
+            className="
+              relative mb-7 overflow-hidden
+              rounded-[1.75rem]
+              bg-[#1A2B48]
+              shadow-[0_18px_60px_rgba(26,43,72,0.14)]
+              sm:mb-9
+              sm:rounded-[2rem]
+            "
           >
-            {/* Decorative rings */}
-            <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full border border-[#88B3D8]/10 sm:-right-28 sm:-top-28 sm:h-72 sm:w-72" />
+            {/* Soft glow */}
+            <div
+              className="
+                pointer-events-none absolute
+                -right-24 -top-28
+                h-72 w-72
+                rounded-full
+                bg-[#3D6BB4]/20
+                blur-3xl
+              "
+            />
 
-            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full border border-[#88B3D8]/10 sm:-right-12 sm:-top-12 sm:h-40 sm:w-40" />
+            <div
+              className="
+                pointer-events-none absolute
+                -bottom-28 -left-20
+                h-64 w-64
+                rounded-full
+                bg-[#88B3D8]/10
+                blur-3xl
+              "
+            />
 
-            {/* Mountain silhouette */}
-            <div className="pointer-events-none absolute bottom-0 right-0 h-[40%] w-[80%] bg-[#3D6BB4]/30 [clip-path:polygon(0_100%,20%_45%,36%_70%,54%_20%,70%_60%,85%_35%,100%_65%,100%_100%)] sm:h-[45%] sm:w-[65%] lg:w-[55%]" />
+            {/* Rings */}
+            <div
+              className="
+                pointer-events-none absolute
+                -right-20 -top-20
+                h-64 w-64
+                rounded-full
+                border border-[#88B3D8]/10
+              "
+            />
 
-            <div className="relative flex flex-col gap-7 p-5 sm:gap-8 sm:p-8 md:p-9 lg:flex-row lg:items-end lg:justify-between lg:p-11 xl:p-12">
+            <div
+              className="
+                pointer-events-none absolute
+                -right-2 -top-2
+                h-40 w-40
+                rounded-full
+                border border-[#88B3D8]/10
+              "
+            />
+
+            {/* Mountain */}
+            <div
+              className="
+                pointer-events-none absolute
+                bottom-0 right-0
+                h-[42%] w-[85%]
+                bg-[#3D6BB4]/25
+                [clip-path:polygon(0_100%,18%_48%,32%_70%,48%_25%,63%_62%,77%_38%,90%_60%,100%_45%,100%_100%)]
+                sm:h-[50%] sm:w-[65%]
+                lg:w-[52%]
+              "
+            />
+
+            <div
+              className="
+                pointer-events-none absolute
+                bottom-0 right-0
+                h-[27%] w-[70%]
+                bg-[#88B3D8]/10
+                [clip-path:polygon(0_100%,25%_60%,40%_80%,58%_40%,75%_68%,88%_48%,100%_70%,100%_100%)]
+                sm:w-[55%]
+              "
+            />
+
+            <div
+              className="
+                relative z-10
+                flex flex-col
+                gap-8
+                p-5
+                sm:p-8
+                md:p-10
+                lg:flex-row
+                lg:items-end
+                lg:justify-between
+                lg:p-12
+              "
+            >
               {/* User */}
-              <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-                {user?.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt=""
-                    className="h-16 w-16 shrink-0 rounded-full border-4 border-white/10 object-cover sm:h-20 sm:w-20 md:h-24 md:w-24"
+              <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt=""
+                      className="
+                        h-16 w-16 rounded-2xl
+                        border border-white/15
+                        object-cover
+                        shadow-xl
+                        sm:h-20 sm:w-20
+                        md:h-24 md:w-24
+                      "
+                    />
+                  ) : (
+                    <div
+                      className="
+                        flex h-16 w-16
+                        items-center justify-center
+                        rounded-2xl
+                        bg-white
+                        text-xl font-semibold
+                        text-[#1A2B48]
+                        shadow-xl
+                        sm:h-20 sm:w-20 sm:text-2xl
+                        md:h-24 md:w-24
+                      "
+                    >
+                      {firstName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  <span
+                    className="
+                      absolute -bottom-1 -right-1
+                      h-4 w-4
+                      rounded-full
+                      border-[3px]
+                      border-[#1A2B48]
+                      bg-[#88B3D8]
+                    "
                   />
-                ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-xl font-semibold text-[#1A2B48] sm:h-20 sm:w-20 sm:text-2xl md:h-24 md:w-24">
-                    {user?.fullName?.charAt(0)?.toUpperCase() || "G"}
-                  </div>
-                )}
+                </div>
 
                 <div className="min-w-0">
-                  <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#88B3D8] sm:mb-2 sm:text-[10px] sm:tracking-[0.2em]">
-                    GAC Dashboard
-                  </p>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#88B3D8]" />
 
-                  <h1 className="text-2xl font-semibold leading-tight tracking-[-0.04em] text-white sm:text-3xl md:text-4xl lg:text-5xl">
+                    <p
+                      className="
+                        text-[9px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.2em]
+                        text-[#88B3D8]
+                        sm:text-[10px]
+                      "
+                    >
+                      GAC Dashboard
+                    </p>
+                  </div>
+
+                  <h1
+                    className="
+                      text-[1.7rem]
+                      font-semibold
+                      leading-[1.05]
+                      tracking-[-0.05em]
+                      text-white
+                      sm:text-3xl
+                      md:text-4xl
+                      lg:text-5xl
+                    "
+                  >
                     Welcome back,
                     <br />
                     <span className="text-[#88B3D8]">
-                      {user?.fullName?.split(" ")[0] || "Member"}.
+                      {firstName}.
                     </span>
                   </h1>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2.5 text-xs sm:mt-4 sm:gap-3">
-                    <span className="rounded-full bg-white/10 px-2.5 py-1.5 text-[10px] text-white/70 sm:px-3 sm:text-xs">
-                      {ROLE_LABELS[user?.role] ||
-                        user?.role?.replaceAll("_", " ") ||
-                        "Member"}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span
+                      className="
+                        rounded-full
+                        border border-white/10
+                        bg-white/10
+                        px-3 py-1.5
+                        text-[10px]
+                        font-medium
+                        text-white/70
+                        backdrop-blur-sm
+                        sm:text-xs
+                      "
+                    >
+                      {roleLabel}
                     </span>
 
                     <Link
                       to="/profile"
-                      className="text-[10px] text-white/40 transition-colors hover:text-white sm:text-xs"
+                      className="
+                        rounded-full
+                        px-3 py-1.5
+                        text-[10px]
+                        font-medium
+                        text-white/40
+                        transition
+                        hover:bg-white/10
+                        hover:text-white
+                        sm:text-xs
+                      "
                     >
-                      Edit Profile ↗
+                      Edit Profile →
                     </Link>
                   </div>
                 </div>
               </div>
 
-              {/* Brand message */}
-              <div className="relative z-10 max-w-xs lg:text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-                  GAC
+              {/* Brand */}
+              <div className="relative z-10 max-w-sm lg:text-right">
+                <p
+                  className="
+                    text-[9px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.25em]
+                    text-[#88B3D8]/60
+                    sm:text-[10px]
+                  "
+                >
+                  GIKI ADVENTURE CLUB
                 </p>
 
-                <p className="mt-1.5 text-xs leading-5 text-white/50 sm:mt-2 sm:text-sm sm:leading-6">
+                <p
+                  className="
+                    mt-2
+                    text-sm
+                    leading-6
+                    text-white/50
+                    sm:text-base
+                  "
+                >
                   Beyond the ordinary.
                   <br />
                   Into the mountains.
@@ -169,43 +366,57 @@ export default function Dashboard() {
             </div>
           </motion.section>
 
-          {/* =======================================================
-              STUDENT STATS
-          ======================================================== */}
+          {/* =====================================================
+              STUDENT OVERVIEW
+          ====================================================== */}
           {isStudent && stats && (
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.1,
-              }}
-              className="mb-7 sm:mb-8"
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="mb-8 sm:mb-10"
             >
-              <div className="mb-3 flex items-end justify-between gap-3 sm:mb-4">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0] sm:text-[10px] sm:tracking-[0.2em]">
-                    Your Journey
-                  </p>
+              <SectionHeading
+                eyebrow="Your Journey"
+                title="Adventure Overview"
+                action={
+                  <Link
+                    to="/my-tickets"
+                    className="
+                      hidden rounded-full
+                      border border-[#88B3D8]/30
+                      bg-white px-4 py-2
+                      text-[10px]
+                      font-semibold
+                      uppercase
+                      tracking-[0.12em]
+                      text-[#3D6BB4]
+                      shadow-sm
+                      transition
+                      hover:border-[#3D6BB4]/30
+                      hover:bg-[#1A2B48]
+                      hover:text-white
+                      sm:block
+                    "
+                  >
+                    My Tickets →
+                  </Link>
+                }
+              />
 
-                  <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1A2B48] sm:text-2xl">
-                    Adventure Overview
-                  </h2>
-                </div>
-
-                <Link
-                  to="/my-tickets"
-                  className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#3D6BB4] transition-colors hover:text-[#1A2B48] sm:block sm:text-xs"
-                >
-                  My Tickets ↗
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+              <div
+                className="
+                  grid grid-cols-2
+                  gap-3
+                  sm:grid-cols-2 sm:gap-4
+                  lg:grid-cols-4
+                "
+              >
                 <StatCard
                   value={stats.total}
                   label="Total Registrations"
                   number="01"
+                  icon={<TicketIcon />}
                 />
 
                 <StatCard
@@ -213,74 +424,98 @@ export default function Dashboard() {
                   label="Confirmed"
                   number="02"
                   accent
+                  icon={<CheckIcon />}
                 />
 
                 <StatCard
                   value={stats.pending}
                   label="Pending"
                   number="03"
+                  icon={<ClockIcon />}
                 />
 
                 <StatCard
                   value={stats.waitlisted}
                   label="Waitlisted"
                   number="04"
+                  icon={<ListIcon />}
                 />
               </div>
 
-              {/* Tickets CTA */}
               <Link
                 to="/my-tickets"
                 className="mt-3 block sm:hidden"
               >
-                <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-[0_10px_35px_rgba(26,43,72,0.05)]">
-                  <span className="text-xs font-medium text-[#1A2B48]">
-                    View My Tickets
-                  </span>
+                <div
+                  className="
+                    flex items-center justify-between
+                    rounded-2xl
+                    border border-[#88B3D8]/20
+                    bg-white
+                    px-4 py-3.5
+                    shadow-[0_10px_35px_rgba(26,43,72,0.05)]
+                    transition
+                    active:scale-[0.99]
+                  "
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-[#1A2B48]">
+                      View My Tickets
+                    </p>
 
-                  <span className="text-sm text-[#3D6BB4]">
-                    ↗
+                    <p className="mt-0.5 text-[10px] text-[#688BB0]">
+                      Check your upcoming adventures
+                    </p>
+                  </div>
+
+                  <span
+                    className="
+                      flex h-8 w-8
+                      items-center justify-center
+                      rounded-full
+                      bg-[#EBF2F2]
+                      text-[#3D6BB4]
+                    "
+                  >
+                    →
                   </span>
                 </div>
               </Link>
             </motion.section>
           )}
 
-          {/* =======================================================
+          {/* =====================================================
               ADMIN TOOLS
-          ======================================================== */}
-          {(isSuperAdmin ||
-            canManageEvents ||
-            isFinance ||
-            isLogistics ||
-            canViewBudget ||
-            isLeadership ||
-            canViewFemaleList) && (
+          ====================================================== */}
+          {hasAdminTools && (
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.6,
-                delay: isStudent ? 0.2 : 0.1,
+                duration: 0.55,
+                delay: isStudent ? 0.16 : 0.08,
               }}
             >
-              <div className="mb-3 sm:mb-4">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0] sm:text-[10px] sm:tracking-[0.2em]">
-                  Management
-                </p>
+              <SectionHeading
+                eyebrow="Management"
+                title="Admin Tools"
+              />
 
-                <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#1A2B48] sm:text-2xl">
-                  Admin Tools
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+              <div
+                className="
+                  grid grid-cols-1
+                  gap-3
+                  sm:grid-cols-2 sm:gap-4
+                  lg:grid-cols-3
+                "
+              >
                 {isSuperAdmin && (
                   <AdminTool
                     to="/admin"
                     number="01"
                     title="Role Management"
                     description="Manage user roles and permissions."
+                    icon={<UsersIcon />}
                   />
                 )}
 
@@ -290,6 +525,7 @@ export default function Dashboard() {
                     number="02"
                     title="Manage Events"
                     description="Create, edit and manage GAC adventures."
+                    icon={<MountainIcon />}
                   />
                 )}
 
@@ -299,6 +535,7 @@ export default function Dashboard() {
                     number="03"
                     title="Finance Dashboard"
                     description="Track payments, registrations and finances."
+                    icon={<WalletIcon />}
                   />
                 )}
 
@@ -308,6 +545,7 @@ export default function Dashboard() {
                     number="04"
                     title="Logistics Dashboard"
                     description="Manage transport and trip logistics."
+                    icon={<BoxIcon />}
                   />
                 )}
 
@@ -316,7 +554,8 @@ export default function Dashboard() {
                     to="/admin/female-list"
                     number="05"
                     title="Female Students List"
-                    description="View and manage the registered female students."
+                    description="View and manage registered female students."
+                    icon={<UsersIcon />}
                   />
                 )}
 
@@ -326,6 +565,7 @@ export default function Dashboard() {
                     number="06"
                     title="Budget Overview"
                     description="Review budgets and financial planning."
+                    icon={<ChartIcon />}
                   />
                 )}
 
@@ -335,29 +575,100 @@ export default function Dashboard() {
                     number="07"
                     title="Organization Overview"
                     description="View the GAC organizational structure."
+                    icon={<OrganizationIcon />}
                   />
                 )}
               </div>
             </motion.section>
           )}
 
-          {/* =======================================================
-              FOOTER LABEL
-          ======================================================== */}
-          <div className="mt-9 flex flex-col gap-3 border-t border-[#88B3D8]/20 pt-5 sm:mt-12 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:pt-6">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0] sm:text-[10px] sm:tracking-[0.2em]">
-              GIKI Adventure Club
-            </p>
+          {/* =====================================================
+              FOOTER
+          ====================================================== */}
+          <footer
+            className="
+              mt-10
+              flex flex-col gap-4
+              border-t border-[#88B3D8]/20
+              pt-6
+              sm:mt-14
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
+            "
+          >
+            <div>
+              <p
+                className="
+                  text-[9px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.2em]
+                  text-[#688BB0]
+                  sm:text-[10px]
+                "
+              >
+                GIKI Adventure Club
+              </p>
 
-            <div className="flex items-center gap-2">
+              <p className="mt-1 text-[10px] text-[#688BB0]/70">
+                Beyond the ordinary.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[#88B3D8]" />
               <span className="h-1.5 w-1.5 rounded-full bg-[#5F97DF]" />
               <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
             </div>
-          </div>
+          </footer>
         </div>
       </main>
     </AdminLayout>
+  );
+}
+
+/* ===============================================================
+   SECTION HEADING
+================================================================ */
+
+function SectionHeading({ eyebrow, title, action }) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-4 sm:mb-5">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#3D6BB4]" />
+
+          <p
+            className="
+              text-[9px]
+              font-semibold
+              uppercase
+              tracking-[0.2em]
+              text-[#688BB0]
+              sm:text-[10px]
+            "
+          >
+            {eyebrow}
+          </p>
+        </div>
+
+        <h2
+          className="
+            mt-1.5
+            text-xl
+            font-semibold
+            tracking-[-0.04em]
+            text-[#1A2B48]
+            sm:text-2xl
+          "
+        >
+          {title}
+        </h2>
+      </div>
+
+      {action}
+    </div>
   );
 }
 
@@ -370,51 +681,126 @@ function StatCard({
   label,
   number,
   accent = false,
+  icon,
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`group relative min-w-0 overflow-hidden rounded-[1.25rem] p-4 shadow-[0_10px_35px_rgba(26,43,72,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(26,43,72,0.1)] sm:rounded-[1.5rem] sm:p-6 ${
-        accent
-          ? "bg-[#1A2B48] text-white"
-          : "bg-white text-[#1A2B48]"
-      }`}
-    >
-      {/* Number */}
-      <div
-        className={`absolute right-3 top-3 text-[8px] font-semibold tracking-[0.15em] sm:right-5 sm:top-5 sm:text-[10px] ${
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2 }}
+      className={`
+        group relative min-w-0 overflow-hidden
+        rounded-[1.35rem]
+        p-4
+        shadow-[0_10px_35px_rgba(26,43,72,0.06)]
+        transition-shadow duration-300
+        hover:shadow-[0_20px_50px_rgba(26,43,72,0.11)]
+        sm:rounded-[1.5rem]
+        sm:p-5
+        md:p-6
+        ${
           accent
-            ? "text-white/20"
-            : "text-[#88B3D8]/60"
-        }`}
-      >
-        {number}
+            ? "bg-[#1A2B48] text-white"
+            : "border border-[#88B3D8]/10 bg-white text-[#1A2B48]"
+        }
+      `}
+    >
+      {/* Decorative circle */}
+      <div
+        className={`
+          pointer-events-none absolute
+          -right-10 -top-10
+          h-24 w-24
+          rounded-full
+          border
+          ${
+            accent
+              ? "border-white/10"
+              : "border-[#88B3D8]/10"
+          }
+          transition-transform duration-500
+          group-hover:scale-125
+        `}
+      />
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div
+          className={`
+            flex h-9 w-9
+            items-center justify-center
+            rounded-xl
+            ${
+              accent
+                ? "bg-white/10 text-[#88B3D8]"
+                : "bg-[#EBF2F2] text-[#3D6BB4]"
+            }
+          `}
+        >
+          {icon}
+        </div>
+
+        <span
+          className={`
+            text-[8px]
+            font-semibold
+            tracking-[0.18em]
+            sm:text-[9px]
+            ${
+              accent
+                ? "text-white/20"
+                : "text-[#88B3D8]/70"
+            }
+          `}
+        >
+          {number}
+        </span>
       </div>
 
-      {/* Value */}
-      <p className="truncate text-3xl font-semibold tracking-[-0.05em] sm:text-5xl">
-        {value}
-      </p>
+      <div className="relative mt-5">
+        <p
+          className="
+            text-3xl
+            font-semibold
+            tracking-[-0.06em]
+            sm:text-4xl
+            md:text-5xl
+          "
+        >
+          {value}
+        </p>
 
-      {/* Label */}
-      <p
-        className={`mt-2 max-w-[130px] text-[10px] leading-4 sm:mt-3 sm:max-w-none sm:text-xs sm:leading-5 ${
-          accent
-            ? "text-white/50"
-            : "text-[#688BB0]"
-        }`}
-      >
-        {label}
-      </p>
+        <p
+          className={`
+            mt-1.5
+            text-[10px]
+            leading-4
+            sm:mt-2
+            sm:text-xs
+            sm:leading-5
+            ${
+              accent
+                ? "text-white/50"
+                : "text-[#688BB0]"
+            }
+          `}
+        >
+          {label}
+        </p>
+      </div>
 
-      {/* Accent line */}
       <div
-        className={`mt-4 h-1 w-7 rounded-full transition-all duration-300 group-hover:w-12 sm:mt-5 sm:w-8 sm:group-hover:w-14 ${
-          accent
-            ? "bg-[#88B3D8]"
-            : "bg-[#3D6BB4]"
-        }`}
+        className={`
+          relative mt-4
+          h-1 rounded-full
+          transition-all duration-500
+          group-hover:w-14
+          sm:mt-5
+          sm:w-9
+          ${
+            accent
+              ? "bg-[#88B3D8]"
+              : "bg-[#3D6BB4]"
+          }
+        `}
       />
     </motion.div>
   );
@@ -429,47 +815,343 @@ function AdminTool({
   number,
   title,
   description,
+  icon,
 }) {
   return (
-    <Link
-      to={to}
-      className="group block min-w-0"
-    >
+    <Link to={to} className="group block min-w-0">
       <motion.div
-        whileHover={{ y: -3 }}
+        whileHover={{ y: -4 }}
         transition={{ duration: 0.2 }}
-        className="relative h-full min-h-[190px] overflow-hidden rounded-[1.25rem] bg-white p-5 shadow-[0_10px_35px_rgba(26,43,72,0.05)] transition-all duration-300 group-hover:shadow-[0_20px_50px_rgba(26,43,72,0.1)] sm:min-h-[210px] sm:rounded-[1.5rem] sm:p-6"
+        className="
+          relative h-full min-h-[190px]
+          overflow-hidden
+          rounded-[1.4rem]
+          border border-[#88B3D8]/10
+          bg-white
+          p-5
+          shadow-[0_10px_35px_rgba(26,43,72,0.05)]
+          transition-all duration-300
+          group-hover:border-[#88B3D8]/25
+          group-hover:shadow-[0_22px_55px_rgba(26,43,72,0.11)]
+          sm:min-h-[205px]
+          sm:rounded-[1.5rem]
+          sm:p-6
+        "
       >
-        {/* Background decoration */}
-        <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full border border-[#88B3D8]/10 transition-transform duration-500 group-hover:scale-125" />
+        {/* Large decorative circle */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -right-14 -top-14
+            h-36 w-36
+            rounded-full
+            border border-[#88B3D8]/10
+            transition-transform duration-700
+            group-hover:scale-125
+          "
+        />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -bottom-20 -left-20
+            h-40 w-40
+            rounded-full
+            bg-[#EBF2F2]/70
+          "
+        />
 
         {/* Header */}
         <div className="relative flex items-center justify-between gap-3">
-          <span className="text-[9px] font-semibold tracking-[0.18em] text-[#88B3D8] sm:text-[10px]">
-            {number}
-          </span>
+          <div
+            className="
+              flex h-10 w-10
+              items-center justify-center
+              rounded-xl
+              bg-[#EBF2F2]
+              text-[#3D6BB4]
+              transition-all duration-300
+              group-hover:bg-[#1A2B48]
+              group-hover:text-white
+            "
+          >
+            {icon}
+          </div>
 
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-sm text-[#1A2B48] transition-all duration-300 group-hover:bg-[#1A2B48] group-hover:text-white sm:h-9 sm:w-9">
-            ↗
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className="
+                text-[9px]
+                font-semibold
+                tracking-[0.18em]
+                text-[#88B3D8]
+              "
+            >
+              {number}
+            </span>
+
+            <span
+              className="
+                flex h-8 w-8
+                items-center justify-center
+                rounded-full
+                border border-[#88B3D8]/20
+                bg-white
+                text-sm
+                text-[#3D6BB4]
+                transition-all duration-300
+                group-hover:border-[#1A2B48]
+                group-hover:bg-[#1A2B48]
+                group-hover:text-white
+              "
+            >
+              →
+            </span>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="relative mt-6 sm:mt-8">
-          <h3 className="text-lg font-semibold leading-6 tracking-[-0.03em] text-[#1A2B48] transition-colors duration-300 group-hover:text-[#3D6BB4] sm:text-xl">
+        <div className="relative mt-7">
+          <h3
+            className="
+              text-lg
+              font-semibold
+              leading-6
+              tracking-[-0.035em]
+              text-[#1A2B48]
+              transition-colors duration-300
+              group-hover:text-[#3D6BB4]
+              sm:text-xl
+            "
+          >
             {title}
           </h3>
 
-          <p className="mt-2 max-w-xs text-xs leading-5 text-[#688BB0] sm:text-sm sm:leading-6">
+          <p
+            className="
+              mt-2
+              max-w-sm
+              text-xs
+              leading-5
+              text-[#688BB0]
+              sm:text-sm
+              sm:leading-6
+            "
+          >
             {description}
           </p>
         </div>
 
-        {/* Bottom */}
-        <div className="relative mt-6 h-px w-full bg-[#88B3D8]/15 sm:mt-8">
-          <div className="h-px w-7 bg-[#3D6BB4] transition-all duration-500 group-hover:w-16 sm:w-8 sm:group-hover:w-20" />
+        {/* Bottom line */}
+        <div
+          className="
+            absolute
+            bottom-0 left-5 right-5
+            h-px
+            bg-[#88B3D8]/15
+            sm:left-6 sm:right-6
+          "
+        >
+          <div
+            className="
+              h-px w-8
+              bg-[#3D6BB4]
+              transition-all duration-500
+              group-hover:w-20
+            "
+          />
         </div>
       </motion.div>
     </Link>
+  );
+}
+
+/* ===============================================================
+   ICONS
+================================================================ */
+
+function TicketIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v2a2 2 0 0 0 0 5v2a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-2a2 2 0 0 0 0-5z" />
+      <path d="M12 7v2M12 15v2" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 6h12M8 12h12M8 18h12" />
+      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function MountainIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m3 19 7-14 4 8 2-3 5 9H3Z" />
+      <path d="m8 9 2 2" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h16v10a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V6" />
+      <path d="M16 15h.01" />
+    </svg>
+  );
+}
+
+function BoxIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m21 8-9 5-9-5 9-5 9 5Z" />
+      <path d="M3 8v8l9 5 9-5V8" />
+      <path d="M12 13v8" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="m7 15 3-4 3 2 5-7" />
+    </svg>
+  );
+}
+
+function OrganizationIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="3" width="6" height="5" rx="1" />
+      <rect x="3" y="16" width="6" height="5" rx="1" />
+      <rect x="15" y="16" width="6" height="5" rx="1" />
+      <path d="M12 8v4M6 16v-2h12v2M18 16v-2" />
+    </svg>
   );
 }

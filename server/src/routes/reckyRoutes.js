@@ -5,6 +5,7 @@ import {
   listMyReckyAssignments,
   logReckyExpense,
   listReckyExpenses,
+  attachReckyExpenseReceipt,
 } from '../controllers/reckyController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
@@ -25,7 +26,7 @@ router.get(
   requireRole('event_coordinator', 'super_admin'),
   listReckyAssignmentsForEvent
 );
-
+router.patch('/expenses/:expenseId/receipt', upload.single('receipt'), attachReckyExpenseReceipt);
 // Expense routes are open to any authenticated user — the controller itself
 // checks whether they're actually the assigned recky planner or a coordinator
 router.post('/events/:eventId/expenses', upload.single('receipt'), logReckyExpense);

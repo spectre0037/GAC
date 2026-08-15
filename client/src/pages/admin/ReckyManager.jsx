@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-
 import api from '@/lib/axios';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
@@ -16,6 +15,9 @@ import {
 } from '@/components/ui/card';
 
 import AdminLayout from '@/components/admin/AdminLayout';
+import SyncStatusBadge from '@/components/SyncStatusBadge';
+import { useOnlineSync } from '@/hooks/useOnlineSync';
+import { addToQueue, getQueueForEvent } from '@/lib/offlineQueue';
 
 const CATEGORIES = [
   'logistics',
@@ -26,13 +28,10 @@ const CATEGORIES = [
   'misc',
 ];
 
-const CATEGORY_STYLES = {
-  logistics: 'bg-blue-50 text-blue-700',
-  operations: 'bg-purple-50 text-purple-700',
-  transport: 'bg-cyan-50 text-cyan-700',
-  food: 'bg-amber-50 text-amber-700',
-  water: 'bg-sky-50 text-sky-700',
-  misc: 'bg-slate-100 text-slate-600',
+const initialExpenseForm = {
+  category: 'logistics',
+  description: '',
+  amount: '',
 };
 
 export default function ReckyManager() {
@@ -40,33 +39,18 @@ export default function ReckyManager() {
 
   const [assignments, setAssignments] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [queuedExpenses, setQueuedExpenses] = useState([]);
 
   const [inviteEmail, setInviteEmail] = useState('');
-
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [loadingAssignments, setLoadingAssignments] = useState(true);
-  const [loadingExpenses, setLoadingExpenses] = useState(true);
-
+  const [expenseForm, setExpenseForm] = useState(initialExpenseForm);
   const [inviting, setInviting] = useState(false);
   const [addingExpense, setAddingExpense] = useState(false);
 
-  const [expenseForm, setExpenseForm] = useState({
-    category: 'logistics',
-    description: '',
-    amount: '',
-  });
-
-  useEffect(() => {
-    if (!eventId) return;
-
-    fetchAssignments();
-    fetchExpenses();
-  }, [eventId]);
-
-  async function fetchAssignments() {
-    setLoadingAssignments(true);
+  const fetchAll = useCallback(async () => {
+    setError('');
 
     try {
       const { data } = await api.get(
@@ -77,15 +61,9 @@ export default function ReckyManager() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Failed to load assignments.'
+          'Failed to load recky assignments.'
       );
-    } finally {
-      setLoadingAssignments(false);
     }
-  }
-
-  async function fetchExpenses() {
-    setLoadingExpenses(true);
 
     try {
       const { data } = await api.get(
@@ -94,24 +72,30 @@ export default function ReckyManager() {
 
       setExpenses(data.expenses || []);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          'Failed to load expenses.'
-      );
-    } finally {
-      setLoadingExpenses(false);
+      // Offline is fine — queued expenses are still displayed.
     }
-  }
 
-  function clearMessages() {
-    setError('');
-    setSuccess('');
-  }
+    setQueuedExpenses(
+      getQueueForEvent(Number(eventId), 'recky_expense')
+    );
+  }, [eventId]);
+
+  const {
+    isOnline,
+    pendingCount,
+    syncing,
+    manualSync,
+  } = useOnlineSync(fetchAll);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   async function handleInvite(e) {
     e.preventDefault();
 
-    clearMessages();
+    setError('');
+    setSuccess('');
     setInviting(true);
 
     try {
@@ -120,14 +104,12 @@ export default function ReckyManager() {
       });
 
       setInviteEmail('');
-
-      await fetchAssignments();
-
-      setSuccess('Recky planner assigned successfully.');
+      setSuccess('Recky planner invitation sent.');
+      fetchAll();
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Failed to assign recky planner.'
+          'Failed to assign recky planner. Please check your connection.'
       );
     } finally {
       setInviting(false);
@@ -137,633 +119,637 @@ export default function ReckyManager() {
   async function handleAddExpense(e) {
     e.preventDefault();
 
-    clearMessages();
+    setError('');
+    setSuccess('');
     setAddingExpense(true);
 
+    const payload = {
+      ...expenseForm,
+    };
+
     try {
-      await api.post(`/recky/events/${eventId}/expenses`, {
-        category: expenseForm.category,
-        description: expenseForm.description,
-        amount: expenseForm.amount,
-      });
+      await api.post(
+        `/recky/events/${eventId}/expenses`,
+        payload
+      );
 
-      setExpenseForm({
-        category: 'logistics',
-        description: '',
-        amount: '',
-      });
-
-      await fetchExpenses();
+      setExpenseForm(initialExpenseForm);
 
       setSuccess('Expense added successfully.');
+      fetchAll();
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          'Failed to log expense.'
-      );
+      if (!err.response) {
+        addToQueue(
+          'recky_expense',
+          Number(eventId),
+          payload
+        );
+
+        setExpenseForm(initialExpenseForm);
+
+        setQueuedExpenses(
+          getQueueForEvent(
+            Number(eventId),
+            'recky_expense'
+          )
+        );
+
+        setSuccess(
+          'Saved offline. It will sync automatically when you are back online.'
+        );
+      } else {
+        setError(
+          err.response?.data?.message ||
+            'Failed to log expense.'
+        );
+      }
     } finally {
       setAddingExpense(false);
     }
   }
 
-  const totalSpent = useMemo(() => {
-    return expenses.reduce(
-      (sum, expense) => sum + Number(expense.amount || 0),
-      0
-    );
-  }, [expenses]);
-
-  const formattedTotal = totalSpent.toLocaleString('en-PK');
+  const totalSpent = expenses.reduce(
+    (sum, expense) => sum + Number(expense.amount || 0),
+    0
+  );
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-[#EBF2F2] px-4 py-6 sm:px-6 md:px-8 lg:px-10 lg:py-8">
-        <div className="mx-auto max-w-7xl">
+      <div className="w-full px-4 py-5 sm:px-6 sm:py-7 lg:px-10 lg:py-10">
+        <div className="mx-auto w-full max-w-5xl">
 
           {/* =====================================================
-              HEADER
-          ===================================================== */}
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8"
-          >
+              PAGE HEADER
+          ====================================================== */}
+          <div className="mb-6 sm:mb-8">
             <Link
               to="/admin/events"
-              className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-[#688BB0] transition-colors hover:text-[#1A2B48]"
+              className="
+                inline-flex items-center gap-1.5
+                text-sm font-medium
+                text-slate-500
+                transition-colors
+                hover:text-[#1A2B48]
+              "
             >
-              <span>←</span>
+              <span className="text-base">←</span>
               Back to Events
             </Link>
 
-            <div className="mb-4 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#3D6BB4]" />
-
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#688BB0]">
-                Event Operations
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-
+            <div className="mt-4 flex flex-col gap-3 sm:mt-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className="text-4xl font-semibold tracking-[-0.05em] text-[#1A2B48] sm:text-5xl">
-                  Recky
-                  <br />
-                  <span className="text-[#3D6BB4]">
-                    Planning
-                  </span>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#3D6BB4]">
+                  Event Operations
+                </p>
+
+                <h1 className="text-2xl font-semibold tracking-tight text-[#1A2B48] sm:text-3xl">
+                  Recky Planning
                 </h1>
 
-                <div className="mt-5 h-px w-16 bg-[#88B3D8]" />
-
-                <p className="mt-5 max-w-xl text-sm leading-7 text-[#688BB0]">
-                  Coordinate reconnaissance planning, assign
-                  team members, and keep track of expenses for
-                  this event.
+                <p className="mt-1.5 max-w-xl text-sm leading-6 text-slate-500">
+                  Assign planners, manage field expenses, and keep
+                  your recky records synchronized.
                 </p>
               </div>
 
-              {/* Total Spending */}
-
-              <div className="flex w-full items-center gap-4 rounded-[20px] bg-white px-5 py-4 shadow-[0_15px_50px_rgba(26,43,72,0.06)] ring-1 ring-[#88B3D8]/20 md:w-auto md:min-w-[230px]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-xs font-bold text-[#3D6BB4]">
-                  Rs
-                </div>
-
-                <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0]">
-                    Total Spent
-                  </p>
-
-                  <p className="mt-1 text-xl font-semibold tracking-tight text-[#1A2B48]">
-                    Rs. {formattedTotal}
-                  </p>
-                </div>
-              </div>
+              <SyncStatusBadge
+                isOnline={isOnline}
+                pendingCount={pendingCount}
+                syncing={syncing}
+                onSync={manualSync}
+              />
             </div>
-          </motion.div>
-
-          {/* =====================================================
-              FEEDBACK
-          ===================================================== */}
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-600">
-                !
-              </span>
-
-              <p className="text-sm text-red-700">
-                {error}
-              </p>
-            </motion.div>
-          )}
-
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-600">
-                ✓
-              </span>
-
-              <p className="text-sm text-emerald-700">
-                {success}
-              </p>
-            </motion.div>
-          )}
-
-          {/* =====================================================
-              MAIN GRID
-          ===================================================== */}
-
-          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-
-            {/* =================================================
-                ASSIGN RECKY
-            ================================================= */}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <Card className="overflow-hidden rounded-[28px] border-0 bg-white shadow-[0_20px_70px_rgba(26,43,72,0.07)] ring-1 ring-[#88B3D8]/20">
-
-                <CardHeader className="border-b border-slate-100 px-5 py-6 sm:px-7">
-
-                  <div className="flex items-start justify-between gap-4">
-
-                    <div>
-                      <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0]">
-                        Team Assignment
-                      </div>
-
-                      <CardTitle className="text-lg font-semibold tracking-tight text-[#1A2B48]">
-                        Assign Recky Planner
-                      </CardTitle>
-
-                      <CardDescription className="mt-2 max-w-md text-xs leading-5 text-slate-400">
-                        Invite core members who will participate
-                        in the reconnaissance trip.
-                      </CardDescription>
-                    </div>
-
-                    <div className="shrink-0 rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-semibold text-[#3D6BB4]">
-                      {assignments.length}{' '}
-                      {assignments.length === 1
-                        ? 'Member'
-                        : 'Members'}
-                    </div>
-
-                  </div>
-                </CardHeader>
-
-                <CardContent className="px-5 py-6 sm:px-7">
-
-                  <form
-                    onSubmit={handleInvite}
-                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                  >
-                    <div className="flex-1">
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        Member Email
-                      </label>
-
-                      <Input
-                        type="email"
-                        placeholder="member@email.com"
-                        value={inviteEmail}
-                        onChange={(e) =>
-                          setInviteEmail(e.target.value)
-                        }
-                        required
-                        disabled={inviting}
-                        className="h-11 rounded-xl border-0 bg-[#F4F7F7] px-4 text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 transition-all placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={inviting}
-                      className="h-11 rounded-xl bg-[#1A2B48] px-5 text-xs font-semibold text-white shadow-none transition-all hover:bg-[#3D6BB4] disabled:opacity-60"
-                    >
-                      {inviting
-                        ? 'Inviting...'
-                        : 'Invite Member'}
-
-                      {!inviting && (
-                        <span className="ml-2">
-                          ↗
-                        </span>
-                      )}
-                    </Button>
-                  </form>
-
-                  {/* Assignments */}
-
-                  <div className="mt-8">
-
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        Current Assignments
-                      </span>
-
-                      {assignments.length > 0 && (
-                        <span className="text-[9px] text-slate-400">
-                          {assignments.length}/3 recommended
-                        </span>
-                      )}
-                    </div>
-
-                    {loadingAssignments ? (
-                      <div className="space-y-2">
-                        {[1, 2].map((item) => (
-                          <div
-                            key={item}
-                            className="h-[66px] animate-pulse rounded-2xl bg-[#F4F7F7]"
-                          />
-                        ))}
-                      </div>
-                    ) : assignments.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-[#88B3D8]/40 bg-[#EBF2F2]/40 px-5 py-8 text-center">
-                        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#EBF2F2] text-sm text-[#3D6BB4]">
-                          +
-                        </div>
-
-                        <p className="text-xs font-semibold text-[#1A2B48]">
-                          No planners assigned
-                        </p>
-
-                        <p className="mt-1 text-[10px] text-slate-400">
-                          Invite members using the form above.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="overflow-hidden rounded-2xl ring-1 ring-slate-200/70">
-                        {assignments.map((assignment, index) => (
-                          <div
-                            key={assignment.id}
-                            className={`flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-[#F7FAFA] ${
-                              index !== assignments.length - 1
-                                ? 'border-b border-slate-100'
-                                : ''
-                            }`}
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EBF2F2] text-xs font-bold text-[#3D6BB4]">
-                                {assignment.invitedEmail
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || '?'}
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="truncate text-xs font-semibold text-[#1A2B48]">
-                                  {assignment.invitedEmail}
-                                </p>
-
-                                <p className="mt-1 text-[9px] text-slate-400">
-                                  Recky planner
-                                </p>
-                              </div>
-
-                            </div>
-
-                            <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-                              {assignment.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* =================================================
-                EXPENSE FORM
-            ================================================= */}
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <Card className="overflow-hidden rounded-[28px] border-0 bg-white shadow-[0_20px_70px_rgba(26,43,72,0.07)] ring-1 ring-[#88B3D8]/20">
-
-                <CardHeader className="border-b border-slate-100 px-5 py-6 sm:px-7">
-
-                  <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0]">
-                    Financial Tracking
-                  </div>
-
-                  <CardTitle className="text-lg font-semibold tracking-tight text-[#1A2B48]">
-                    Log Expense
-                  </CardTitle>
-
-                  <CardDescription className="mt-2 text-xs leading-5 text-slate-400">
-                    Record reconnaissance expenses against
-                    the event budget.
-                  </CardDescription>
-
-                </CardHeader>
-
-                <CardContent className="px-5 py-6 sm:px-7">
-
-                  <form
-                    onSubmit={handleAddExpense}
-                    className="flex flex-col gap-5"
-                  >
-
-                    {/* Category */}
-
-                    <div>
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        Category
-                      </label>
-
-                      <select
-                        value={expenseForm.category}
-                        disabled={addingExpense}
-                        onChange={(e) =>
-                          setExpenseForm((prev) => ({
-                            ...prev,
-                            category: e.target.value,
-                          }))
-                        }
-                        className="h-11 w-full appearance-none rounded-xl border-0 bg-[#F4F7F7] px-4 text-xs font-medium text-[#1A2B48] outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-[#3D6BB4] disabled:opacity-60"
-                      >
-                        {CATEGORIES.map((category) => (
-                          <option
-                            key={category}
-                            value={category}
-                          >
-                            {category.charAt(0).toUpperCase() +
-                              category.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Description */}
-
-                    <div>
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        Description
-                      </label>
-
-                      <Textarea
-                        value={expenseForm.description}
-                        disabled={addingExpense}
-                        onChange={(e) =>
-                          setExpenseForm((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        required
-                        placeholder="Describe the expense..."
-                        className="min-h-[105px] resize-none rounded-xl border-0 bg-[#F4F7F7] px-4 py-3 text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 transition-all placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
-                      />
-                    </div>
-
-                    {/* Amount */}
-
-                    <div>
-                      <label className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        Amount (PKR)
-                      </label>
-
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-[#688BB0]">
-                          Rs.
-                        </span>
-
-                        <Input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={expenseForm.amount}
-                          disabled={addingExpense}
-                          onChange={(e) =>
-                            setExpenseForm((prev) => ({
-                              ...prev,
-                              amount: e.target.value,
-                            }))
-                          }
-                          required
-                          placeholder="0"
-                          className="h-11 rounded-xl border-0 bg-[#F4F7F7] pl-11 pr-4 text-xs font-medium text-[#1A2B48] shadow-none ring-1 ring-slate-200 transition-all placeholder:text-slate-400 focus:bg-white focus:ring-[#3D6BB4]"
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={addingExpense}
-                      className="h-11 w-fit rounded-xl bg-[#1A2B48] px-6 text-xs font-semibold text-white shadow-none transition-all hover:bg-[#3D6BB4] disabled:opacity-60"
-                    >
-                      {addingExpense
-                        ? 'Adding...'
-                        : 'Add Expense'}
-
-                      {!addingExpense && (
-                        <span className="ml-2">
-                          ↗
-                        </span>
-                      )}
-                    </Button>
-
-                  </form>
-
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
 
           {/* =====================================================
-              EXPENSE HISTORY
-          ===================================================== */}
+              ALERTS
+          ====================================================== */}
+          {error && (
+            <div
+              className="
+                mb-5 rounded-xl
+                border border-red-200
+                bg-red-50
+                px-4 py-3
+                text-sm text-red-700
+              "
+            >
+              {error}
+            </div>
+          )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Card className="mt-6 overflow-hidden rounded-[28px] border-0 bg-white shadow-[0_20px_70px_rgba(26,43,72,0.07)] ring-1 ring-[#88B3D8]/20">
+          {success && (
+            <div
+              className="
+                mb-5 rounded-xl
+                border border-emerald-200
+                bg-emerald-50
+                px-4 py-3
+                text-sm text-emerald-700
+              "
+            >
+              {success}
+            </div>
+          )}
 
-              <CardHeader className="border-b border-slate-100 px-5 py-6 sm:px-7">
+          {/* =====================================================
+              SUMMARY
+          ====================================================== */}
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Card className="border-slate-200/70 bg-white shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Planners
+                </p>
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="mt-1 text-2xl font-semibold text-[#1A2B48]">
+                  {assignments.length}
+                </p>
 
-                  <div>
-                    <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#688BB0]">
-                      Financial History
+                <p className="mt-1 text-xs text-slate-400">
+                  Assigned to this event
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70 bg-white shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Expenses
+                </p>
+
+                <p className="mt-1 text-2xl font-semibold text-[#1A2B48]">
+                  {expenses.length}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Synced expense records
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70 bg-white shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Total Spent
+                </p>
+
+                <p className="mt-1 break-words text-2xl font-semibold text-[#1A2B48]">
+                  Rs. {totalSpent.toLocaleString()}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Synced expenses only
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* =====================================================
+              ASSIGN RECKY PLANNER
+          ====================================================== */}
+          <Card className="mb-6 overflow-hidden border-slate-200/70 bg-white shadow-sm">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/60 px-4 py-5 sm:px-6">
+              <CardTitle className="text-lg font-semibold text-[#1A2B48]">
+                Assign Recky Planner
+              </CardTitle>
+
+              <CardDescription className="text-sm leading-5">
+                Assign a member before heading out for the
+                reconnaissance trip.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-4 sm:p-6">
+              <form
+                onSubmit={handleInvite}
+                className="
+                  flex flex-col gap-3
+                  sm:flex-row
+                "
+              >
+                <div className="min-w-0 flex-1">
+                  <Label
+                    htmlFor="invite-email"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Member Email
+                  </Label>
+
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    placeholder="member@email.com"
+                    value={inviteEmail}
+                    onChange={(e) =>
+                      setInviteEmail(e.target.value)
+                    }
+                    className="h-11 bg-white"
+                    required
+                  />
+                </div>
+
+                <div className="sm:self-end">
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    disabled={inviting}
+                    className="h-11 w-full sm:w-auto"
+                  >
+                    {inviting ? 'Inviting...' : 'Invite Planner'}
+                  </Button>
+                </div>
+              </form>
+
+              {assignments.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Current Assignments
+                  </p>
+
+                  {assignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="
+                        flex flex-col gap-2
+                        rounded-xl
+                        border border-slate-100
+                        bg-slate-50/60
+                        p-3.5
+                        sm:flex-row sm:items-center
+                        sm:justify-between
+                      "
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#1A2B48]">
+                          {assignment.invitedEmail}
+                        </p>
+                      </div>
+
+                      <span
+                        className="
+                          inline-flex w-fit items-center
+                          rounded-full
+                          bg-[#EBF2F2]
+                          px-2.5 py-1
+                          text-xs font-medium
+                          capitalize text-[#3D6BB4]
+                        "
+                      >
+                        {assignment.status}
+                      </span>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                    <CardTitle className="text-lg font-semibold tracking-tight text-[#1A2B48]">
-                      Expenses So Far
+          {/* =====================================================
+              EXPENSE FORM
+          ====================================================== */}
+          <Card className="mb-6 overflow-hidden border-slate-200/70 bg-white shadow-sm">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/60 px-4 py-5 sm:px-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold text-[#1A2B48]">
+                    Log Recky Expense
+                  </CardTitle>
+
+                  <CardDescription className="mt-1 max-w-2xl text-sm leading-5">
+                    Expenses can be saved while offline and
+                    automatically synchronized once connectivity
+                    returns.
+                  </CardDescription>
+                </div>
+
+                <span
+                  className="
+                    inline-flex w-fit shrink-0
+                    items-center gap-1.5
+                    rounded-full
+                    bg-emerald-50
+                    px-2.5 py-1
+                    text-xs font-medium
+                    text-emerald-700
+                  "
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Offline ready
+                </span>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-4 sm:p-6">
+              <form
+                onSubmit={handleAddExpense}
+                className="space-y-5"
+              >
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label
+                      htmlFor="category"
+                      className="text-sm font-medium text-slate-700"
+                    >
+                      Category
+                    </Label>
+
+                    <select
+                      id="category"
+                      className="
+                        h-11 w-full
+                        rounded-xl
+                        border border-slate-200
+                        bg-white
+                        px-3
+                        text-sm text-[#1A2B48]
+                        outline-none
+                        transition-all
+                        focus:border-[#3D6BB4]
+                        focus:ring-2
+                        focus:ring-[#3D6BB4]/10
+                      "
+                      value={expenseForm.category}
+                      onChange={(e) =>
+                        setExpenseForm((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                        }))
+                      }
+                    >
+                      {CATEGORIES.map((category) => (
+                        <option
+                          key={category}
+                          value={category}
+                        >
+                          {category.charAt(0).toUpperCase() +
+                            category.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label
+                      htmlFor="amount"
+                      className="text-sm font-medium text-slate-700"
+                    >
+                      Amount (PKR)
+                    </Label>
+
+                    <Input
+                      id="amount"
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 5000"
+                      value={expenseForm.amount}
+                      onChange={(e) =>
+                        setExpenseForm((prev) => ({
+                          ...prev,
+                          amount: e.target.value,
+                        }))
+                      }
+                      className="h-11"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label
+                    htmlFor="description"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    Description
+                  </Label>
+
+                  <Textarea
+                    id="description"
+                    placeholder="What was this expense for?"
+                    value={expenseForm.description}
+                    onChange={(e) =>
+                      setExpenseForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="min-h-[100px] resize-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    disabled={addingExpense}
+                    className="h-11 w-full sm:w-auto"
+                  >
+                    {addingExpense
+                      ? 'Saving...'
+                      : 'Add Expense'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* =====================================================
+              QUEUED EXPENSES
+          ====================================================== */}
+          {queuedExpenses.length > 0 && (
+            <Card
+              className="
+                mb-6 overflow-hidden
+                border-amber-200
+                bg-amber-50/40
+                shadow-sm
+              "
+            >
+              <CardHeader className="border-b border-amber-100 px-4 py-5 sm:px-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-semibold text-amber-900">
+                      Waiting to Sync
                     </CardTitle>
 
-                    <CardDescription className="mt-1 text-xs text-slate-400">
-                      All reconnaissance expenses recorded
-                      for this event.
+                    <CardDescription className="mt-1 text-amber-700/80">
+                      These expenses are stored locally.
                     </CardDescription>
                   </div>
 
-                  <div className="rounded-full bg-[#EBF2F2] px-4 py-2 text-xs font-semibold text-[#1A2B48]">
-                    Rs. {formattedTotal}
-                  </div>
-
+                  <span
+                    className="
+                      flex h-8 min-w-8 items-center justify-center
+                      rounded-full
+                      bg-amber-100
+                      px-2
+                      text-xs font-semibold
+                      text-amber-800
+                    "
+                  >
+                    {queuedExpenses.length}
+                  </span>
                 </div>
               </CardHeader>
 
-              <CardContent className="p-0">
-
-                {loadingExpenses ? (
-                  <div className="space-y-3 px-5 py-6 sm:px-7">
-                    {[1, 2, 3].map((item) => (
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-2">
+                  {queuedExpenses.map((queued) => (
+                    <div
+                      key={queued.id}
+                      className="
+                        rounded-xl
+                        border border-amber-100
+                        bg-white/80
+                        p-3.5
+                      "
+                    >
                       <div
-                        key={item}
-                        className="h-14 animate-pulse rounded-xl bg-[#F4F7F7]"
-                      />
-                    ))}
-                  </div>
-                ) : expenses.length === 0 ? (
-
-                  <div className="px-5 py-14 text-center sm:px-7">
-
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EBF2F2] text-xs font-bold text-[#3D6BB4]">
-                      Rs
-                    </div>
-
-                    <p className="text-sm font-semibold text-[#1A2B48]">
-                      No expenses logged yet
-                    </p>
-
-                    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-400">
-                      Reconnaissance expenses will appear
-                      here once they are recorded.
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div>
-
-                    {/* Desktop Header */}
-
-                    <div className="hidden grid-cols-[1fr_1.6fr_160px] gap-5 border-b border-slate-100 bg-[#F7FAFA] px-5 py-3 sm:grid sm:px-7">
-
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Category
-                      </span>
-
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Description
-                      </span>
-
-                      <span className="text-right text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
-                        Amount
-                      </span>
-
-                    </div>
-
-                    {expenses.map((expense, index) => (
-                      <div
-                        key={expense.id}
-                        className={`grid gap-4 px-5 py-5 transition-colors hover:bg-[#F7FAFA] sm:grid-cols-[1fr_1.6fr_160px] sm:items-center sm:px-7 ${
-                          index !== expenses.length - 1
-                            ? 'border-b border-slate-100'
-                            : ''
-                        }`}
+                        className="
+                          flex flex-col gap-2
+                          sm:flex-row sm:items-center
+                          sm:justify-between
+                        "
                       >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium capitalize text-[#1A2B48]">
+                            {queued.payload.category}
+                          </p>
 
-                        {/* Category */}
+                          <p className="mt-0.5 break-words text-sm text-slate-500">
+                            {queued.payload.description}
+                          </p>
 
-                        <div>
-                          <span className="mb-2 block text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:hidden">
-                            Category
-                          </span>
-
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-semibold capitalize ${
-                              CATEGORY_STYLES[
-                                expense.category
-                              ] ||
-                              CATEGORY_STYLES.misc
-                            }`}
-                          >
-                            {expense.category}
-                          </span>
+                          {queued.status === 'failed' && (
+                            <p className="mt-1 text-xs text-red-600">
+                              {queued.errorMessage}
+                            </p>
+                          )}
                         </div>
 
-                        {/* Description */}
+                        <p className="shrink-0 text-sm font-semibold text-[#1A2B48]">
+                          Rs.{' '}
+                          {Number(
+                            queued.payload.amount
+                          ).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                        <div>
-                          <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:hidden">
-                            Description
-                          </span>
+          {/* =====================================================
+              SYNCED EXPENSES
+          ====================================================== */}
+          <Card className="overflow-hidden border-slate-200/70 bg-white shadow-sm">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/60 px-4 py-5 sm:px-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold text-[#1A2B48]">
+                    Synced Expenses
+                  </CardTitle>
 
-                          <p className="text-xs font-medium leading-5 text-[#1A2B48]">
+                  <CardDescription>
+                    Expenses successfully saved to the server.
+                  </CardDescription>
+                </div>
+
+                <div className="rounded-xl bg-[#EBF2F2] px-3 py-2">
+                  <p className="text-xs text-slate-500">
+                    Total spent
+                  </p>
+
+                  <p className="text-sm font-semibold text-[#1A2B48]">
+                    Rs. {totalSpent.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-4 sm:p-6">
+              {expenses.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-slate-600">
+                    No expenses synced yet.
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    Added expenses will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {expenses.map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="
+                        rounded-xl
+                        border border-slate-100
+                        bg-slate-50/50
+                        p-3.5
+                        transition-colors
+                        hover:bg-slate-50
+                      "
+                    >
+                      <div
+                        className="
+                          flex flex-col gap-3
+                          sm:flex-row
+                          sm:items-center
+                          sm:justify-between
+                        "
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className="
+                                rounded-full
+                                bg-[#EBF2F2]
+                                px-2.5 py-1
+                                text-xs font-medium
+                                capitalize text-[#3D6BB4]
+                              "
+                            >
+                              {expense.category}
+                            </span>
+
+                            {!expense.receiptImageUrl && (
+                              <span
+                                className="
+                                  rounded-full
+                                  bg-amber-50
+                                  px-2.5 py-1
+                                  text-xs font-medium
+                                  text-amber-700
+                                "
+                              >
+                                No receipt
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-2 break-words text-sm text-slate-600">
                             {expense.description}
                           </p>
                         </div>
 
-                        {/* Amount */}
-
-                        <div className="sm:text-right">
-                          <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:hidden">
-                            Amount
-                          </span>
-
-                          <p className="text-sm font-semibold text-[#1A2B48]">
-                            Rs.{' '}
-                            {Number(
-                              expense.amount || 0
-                            ).toLocaleString('en-PK')}
-                          </p>
-                        </div>
-
+                        <p className="shrink-0 text-sm font-semibold text-[#1A2B48]">
+                          Rs.{' '}
+                          {Number(
+                            expense.amount
+                          ).toLocaleString()}
+                        </p>
                       </div>
-                    ))}
-
-                  </div>
-                )}
-
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* =====================================================
-              FOOTER NOTE
-          ===================================================== */}
-
-          <div className="mt-5 flex flex-col gap-2 px-2 pb-6 text-[9px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-
-            <span>
-              Recky assignments and expenses are specific
-              to this event.
-            </span>
-
-            <span className="font-medium">
-              GIKI Adventure Club · Admin Portal
-            </span>
-
-          </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
         </div>
       </div>

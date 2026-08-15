@@ -4,8 +4,8 @@ import { db } from '../db/index.js';
 import { reckyAssignments, reckyExpenses, events, users } from '../db/schema/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { uploadBufferToCloudinary } from '../services/cloudinaryService.js';
 import { sendReckyInviteEmail } from '../services/emailService.js';
+import { uploadBufferToCloudinary } from '../services/cloudinaryService.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -155,4 +155,23 @@ export const listReckyExpenses = asyncHandler(async (req, res) => {
     .where(eq(reckyExpenses.eventId, eventId));
 
   res.json({ success: true, expenses });
+});
+
+export const attachReckyExpenseReceipt = asyncHandler(async (req, res) => {
+  const expenseId = Number(req.params.expenseId);
+  if (Number.isNaN(expenseId)) throw new AppError('Invalid expense id.', 400);
+  if (!req.file) throw new AppError('No image file provided.', 400);
+
+  const [existing] = await db.select().from(reckyExpenses).where(eq(reckyExpenses.id, expenseId));
+  if (!existing) throw new AppError('Expense not found.', 404);
+
+  const result = await uploadBufferToCloudinary(req.file.buffer, 'recky-receipts');
+
+  const [updated] = await db
+    .update(reckyExpenses)
+    .set({ receiptImageUrl: result.secure_url })
+    .where(eq(reckyExpenses.id, expenseId))
+    .returning();
+
+  res.json({ success: true, expense: updated });
 });

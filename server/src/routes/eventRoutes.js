@@ -8,6 +8,7 @@ import {
   getEventBySlug,
   updateEvent,
   updateEventStatus,
+  updateBudgetTargets,
   deleteEvent,
   uploadEventCover,
   updateItinerary,
@@ -39,7 +40,12 @@ router.get(
   ),
   listAllEvents
 );
-
+router.patch(
+  '/:id/budget-targets',
+  requireAuth,
+  requireRole('finance_master', 'super_admin'),
+  updateBudgetTargets
+);
 // Everything below is actual event editing — Coordinator/Super Admin only
 router.use(requireAuth, requireRole('event_coordinator', 'super_admin'));
 

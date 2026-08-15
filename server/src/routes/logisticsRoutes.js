@@ -21,8 +21,8 @@ const READ_ROLES = [
 router.use(requireAuth, requireRole(...READ_ROLES));
 
 router.get('/events/:eventId', listInventoryItems);
-router.post('/events/:eventId', requireRole('master_logistics', 'super_admin'), createInventoryItem);
-router.patch('/:id', requireRole('master_logistics', 'super_admin'), updateInventoryItem);
-router.delete('/:id', requireRole('master_logistics', 'super_admin'), deleteInventoryItem);
+router.post('/events/:eventId', requireRole('master_logistics', 'finance_master', 'super_admin'), createInventoryItem);
+router.patch('/:id', requireRole('master_logistics', 'finance_master', 'super_admin'), updateInventoryItem);
+router.delete('/:id', requireRole('master_logistics', 'finance_master', 'super_admin'), deleteInventoryItem);
 
 export default router;

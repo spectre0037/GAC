@@ -7,7 +7,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { uploadBufferToCloudinary } from '../services/cloudinaryService.js';
 
 const CATEGORIES = ['logistics', 'operations', 'transport', 'food', 'water', 'misc'];
-const PHASES = ['pre_event', 'post_event'];
+const PHASES = ['pre_event', 'on_event', 'post_event'];
 
 const lineItemSchema = z.object({
   phase: z.enum(PHASES),
@@ -16,8 +16,6 @@ const lineItemSchema = z.object({
   amount: z.coerce.number().positive('Amount must be greater than 0'),
 });
 
-// Master Logistics may only submit 'logistics' category items — Finance
-// Master and Super Admin can submit or edit any category.
 function assertCategoryAllowed(role, category) {
   if (role === 'finance_master' || role === 'super_admin') return;
   if (role === 'master_logistics' && category === 'logistics') return;
@@ -72,13 +70,14 @@ export const listLineItems = asyncHandler(async (req, res) => {
   if (req.query.phase && PHASES.includes(req.query.phase)) {
     conditions.push(eq(budgetLineItems.phase, req.query.phase));
   }
+  if (req.query.category && CATEGORIES.includes(req.query.category)) {
+    conditions.push(eq(budgetLineItems.category, req.query.category));
+  }
 
   const items = await db.select().from(budgetLineItems).where(and(...conditions));
   res.json({ success: true, items });
 });
 
-// Only Finance Master / Super Admin can edit — enforced even on entries
-// Master Logistics originally submitted, per the spec.
 export const updateLineItem = asyncHandler(async (req, res) => {
   if (!['finance_master', 'super_admin'].includes(req.user.role)) {
     throw new AppError('Only Finance Master can edit budget entries.', 403);
@@ -123,50 +122,6 @@ export const deleteLineItem = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Budget item deleted.' });
 });
 
-// Full analytics for Event Coordinator (and anyone with read access) — merges
-// budget line items with recky expenses, since recon trip costs are real
-// pre-event spend even though they're logged through a separate table.
-export const getBudgetSummary = asyncHandler(async (req, res) => {
-  const eventId = Number(req.params.eventId);
-  if (Number.isNaN(eventId)) throw new AppError('Invalid event id.', 400);
-
-  const items = await db.select().from(budgetLineItems).where(eq(budgetLineItems.eventId, eventId));
-  const recky = await db.select().from(reckyExpenses).where(eq(reckyExpenses.eventId, eventId));
-
-  const summary = {
-    preEventTotal: 0,
-    postEventTotal: 0,
-    reckyTotal: 0,
-    grandTotal: 0,
-    byCategory: {},
-  };
-
-  for (const cat of CATEGORIES) {
-    summary.byCategory[cat] = { preEvent: 0, postEvent: 0, recky: 0 };
-  }
-
-  for (const item of items) {
-    const amt = Number(item.amount);
-    if (item.phase === 'pre_event') {
-      summary.preEventTotal += amt;
-      summary.byCategory[item.category].preEvent += amt;
-    } else {
-      summary.postEventTotal += amt;
-      summary.byCategory[item.category].postEvent += amt;
-    }
-  }
-
-  for (const exp of recky) {
-    const amt = Number(exp.amount);
-    summary.reckyTotal += amt;
-    summary.byCategory[exp.category].recky += amt;
-  }
-
-  summary.grandTotal = summary.preEventTotal + summary.postEventTotal + summary.reckyTotal;
-
-  res.json({ success: true, summary });
-});
-
 export const attachLineItemReceipt = asyncHandler(async (req, res) => {
   const itemId = Number(req.params.id);
   if (Number.isNaN(itemId)) throw new AppError('Invalid item id.', 400);
@@ -184,4 +139,58 @@ export const attachLineItemReceipt = asyncHandler(async (req, res) => {
     .returning();
 
   res.json({ success: true, item: updated });
+});
+
+// Pre/On/Post/Recky breakdown, plus planned-vs-actual against the event's
+// budget targets (set separately by Finance Master, adjustable anytime).
+export const getBudgetSummary = asyncHandler(async (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (Number.isNaN(eventId)) throw new AppError('Invalid event id.', 400);
+
+  const [event] = await db.select().from(events).where(eq(events.id, eventId));
+  if (!event) throw new AppError('Event not found.', 404);
+
+  const items = await db.select().from(budgetLineItems).where(eq(budgetLineItems.eventId, eventId));
+  const recky = await db.select().from(reckyExpenses).where(eq(reckyExpenses.eventId, eventId));
+
+  const summary = {
+    preEventTotal: 0,
+    onEventTotal: 0,
+    postEventTotal: 0,
+    reckyTotal: 0,
+    grandTotal: 0,
+    plannedBudget: Number(event.plannedBudget),
+    reckyPlannedBudget: Number(event.reckyPlannedBudget),
+    byCategory: {},
+  };
+
+  for (const cat of CATEGORIES) {
+    summary.byCategory[cat] = { preEvent: 0, onEvent: 0, postEvent: 0, recky: 0 };
+  }
+
+  for (const item of items) {
+    const amt = Number(item.amount);
+    if (item.phase === 'pre_event') {
+      summary.preEventTotal += amt;
+      summary.byCategory[item.category].preEvent += amt;
+    } else if (item.phase === 'on_event') {
+      summary.onEventTotal += amt;
+      summary.byCategory[item.category].onEvent += amt;
+    } else {
+      summary.postEventTotal += amt;
+      summary.byCategory[item.category].postEvent += amt;
+    }
+  }
+
+  for (const exp of recky) {
+    const amt = Number(exp.amount);
+    summary.reckyTotal += amt;
+    summary.byCategory[exp.category].recky += amt;
+  }
+
+  summary.grandTotal = summary.preEventTotal + summary.onEventTotal + summary.postEventTotal + summary.reckyTotal;
+  summary.plannedRemaining = summary.plannedBudget - (summary.grandTotal - summary.reckyTotal);
+  summary.reckyPlannedRemaining = summary.reckyPlannedBudget - summary.reckyTotal;
+
+  res.json({ success: true, summary });
 });

@@ -32,7 +32,6 @@ export default function BudgetReadOnly() {
     <AdminLayout>
       <div className="min-h-screen px-5 py-8 md:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl">
-
           {/* Header */}
           <div className="mb-8">
             <div className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3D6BB4]">
@@ -73,10 +72,7 @@ export default function BudgetReadOnly() {
               </p>
             </div>
 
-            <EventPicker
-              selectedEventId={eventId}
-              onSelect={setEventId}
-            />
+            <EventPicker selectedEventId={eventId} onSelect={setEventId} />
           </div>
 
           {/* Error */}
@@ -135,7 +131,6 @@ export default function BudgetReadOnly() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-
                     {/* Pre Event */}
                     <Card className="rounded-[24px] border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
                       <CardContent className="p-5">
@@ -198,7 +193,25 @@ export default function BudgetReadOnly() {
                         </p>
                       </CardContent>
                     </Card>
+                    <Card className="rounded-[24px] border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
+                      <CardContent className="p-5">
+                        <div className="mb-4 flex items-center justify-between">
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                            On Event Expense
+                          </span>
 
+                          <span className="h-2 w-2 rounded-full bg-slate-400" />
+                        </div>
+
+                        <p className="text-2xl font-semibold tracking-tight text-[#1A2B48]">
+                          Rs. {summary.onEventTotal}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-400">
+                          On eventbudget
+                        </p>
+                      </CardContent>
+                    </Card>
                     {/* Grand Total */}
                     <Card className="rounded-[24px] border-0 bg-[#1A2B48] shadow-sm">
                       <CardContent className="p-5">
@@ -219,13 +232,13 @@ export default function BudgetReadOnly() {
                         </p>
                       </CardContent>
                     </Card>
+                    
                   </div>
                 </div>
               )}
 
               {/* Expense List */}
               <div className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-slate-200/70">
-
                 {/* Section Header */}
                 <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-5 py-5 md:flex-row md:items-center md:px-7">
                   <div>
@@ -307,8 +320,7 @@ export default function BudgetReadOnly() {
                           </p>
 
                           <p className="mt-1 text-[10px] text-slate-400 md:hidden">
-                            {item.category} ·{" "}
-                            {item.phase.replace("_", "-")}
+                            {item.category} · {item.phase.replace("_", "-")}
                           </p>
                         </div>
 

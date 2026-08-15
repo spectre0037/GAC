@@ -146,7 +146,28 @@ export const updateEvent = asyncHandler(async (req, res) => {
 
   res.json({ success: true, event: updated });
 });
+const budgetTargetsSchema = z.object({
+  plannedBudget: z.coerce.number().nonnegative().optional(),
+  reckyPlannedBudget: z.coerce.number().nonnegative().optional(),
+});
 
+export const updateBudgetTargets = asyncHandler(async (req, res) => {
+  const eventId = Number(req.params.id);
+  if (Number.isNaN(eventId)) throw new AppError('Invalid event id.', 400);
+
+  const parsed = budgetTargetsSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(parsed.error.issues[0].message, 400);
+
+  const [existing] = await db.select().from(events).where(eq(events.id, eventId));
+  if (!existing) throw new AppError('Event not found.', 404);
+
+  const updates = { updatedAt: new Date() };
+  if (parsed.data.plannedBudget !== undefined) updates.plannedBudget = String(parsed.data.plannedBudget);
+  if (parsed.data.reckyPlannedBudget !== undefined) updates.reckyPlannedBudget = String(parsed.data.reckyPlannedBudget);
+
+  const [updated] = await db.update(events).set(updates).where(eq(events.id, eventId)).returning();
+  res.json({ success: true, event: updated });
+});
 export const updateEventStatus = asyncHandler(async (req, res) => {
   const eventId = Number(req.params.id);
   if (Number.isNaN(eventId)) throw new AppError('Invalid event id.', 400);

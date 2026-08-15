@@ -32,6 +32,8 @@ import CheckInScan from '@/pages/admin/CheckInScan';
 import HistoryManager from '@/pages/admin/HistoryManager';
 import FemaleListManager from '@/pages/admin/FemaleListManager';
 import FemaleListPrint from '@/pages/admin/FemaleListPrint';
+import ReckyDashboardEntry from '@/pages/admin/ReckyDashboardEntry';
+import EventFullReport from '@/pages/admin/EventFullReport';
 
 function App() {
   return (
@@ -180,7 +182,22 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/admin/recky"
+        element={
+          <ProtectedRoute allowedRoles={['finance_master', 'super_admin']}>
+            <ReckyDashboardEntry />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports"
+        element={
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <EventFullReport />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/admin/history"
         element={
@@ -232,12 +249,7 @@ function App() {
       <Route
         path="/admin/events/:eventId/recky"
         element={
-          <ProtectedRoute
-            allowedRoles={[
-              'event_coordinator',
-              'super_admin',
-            ]}
-          >
+          <ProtectedRoute allowedRoles={['event_coordinator', 'finance_master', 'super_admin']}>
             <ReckyManager />
           </ProtectedRoute>
         }
@@ -296,12 +308,7 @@ function App() {
       <Route
         path="/admin/logistics"
         element={
-          <ProtectedRoute
-            allowedRoles={[
-              'master_logistics',
-              'super_admin',
-            ]}
-          >
+          <ProtectedRoute allowedRoles={['master_logistics', 'finance_master', 'super_admin']}>
             <LogisticsDashboard />
           </ProtectedRoute>
         }

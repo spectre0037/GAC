@@ -41,6 +41,9 @@ export default function ReckyManager() {
   const [expenses, setExpenses] = useState([]);
   const [queuedExpenses, setQueuedExpenses] = useState([]);
 
+  // Budget information assigned from Finance
+  const [budgetSummary, setBudgetSummary] = useState(null);
+
   const [inviteEmail, setInviteEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -52,6 +55,9 @@ export default function ReckyManager() {
   const fetchAll = useCallback(async () => {
     setError('');
 
+    /*
+     * Load assignments
+     */
     try {
       const { data } = await api.get(
         `/recky/events/${eventId}/assignments`
@@ -65,6 +71,9 @@ export default function ReckyManager() {
       );
     }
 
+    /*
+     * Load Recky expenses
+     */
     try {
       const { data } = await api.get(
         `/recky/events/${eventId}/expenses`
@@ -75,6 +84,26 @@ export default function ReckyManager() {
       // Offline is fine — queued expenses are still displayed.
     }
 
+    /*
+     * Load budget information assigned by Finance.
+     *
+     * This is the same endpoint used by FinanceDashboard,
+     * so both dashboards use the same budget source.
+     */
+    try {
+      const { data } = await api.get(
+        `/budget/events/${eventId}/summary`
+      );
+
+      setBudgetSummary(data.summary || null);
+    } catch (err) {
+      // Don't block the Recky dashboard if budget data cannot
+      // be loaded while offline.
+    }
+
+    /*
+     * Load offline queued expenses
+     */
     setQueuedExpenses(
       getQueueForEvent(Number(eventId), 'recky_expense')
     );
@@ -168,10 +197,35 @@ export default function ReckyManager() {
     }
   }
 
+  /*
+   * Calculate current Recky spending.
+   *
+   * This includes synced expenses displayed on this page.
+   */
   const totalSpent = expenses.reduce(
     (sum, expense) => sum + Number(expense.amount || 0),
     0
   );
+
+  /*
+   * Budget assigned by Finance/Admin.
+   *
+   * budgetSummary.reckyPlannedBudget is the authoritative
+   * Recky budget.
+   */
+  const reckyBudget = Number(
+    budgetSummary?.reckyPlannedBudget || 0
+  );
+
+  const budgetRemaining = reckyBudget - totalSpent;
+
+  const budgetExceeded =
+    reckyBudget > 0 && budgetRemaining < 0;
+
+  const budgetPercentage =
+    reckyBudget > 0
+      ? Math.min((totalSpent / reckyBudget) * 100, 100)
+      : 0;
 
   return (
     <AdminLayout>
@@ -253,9 +307,176 @@ export default function ReckyManager() {
           )}
 
           {/* =====================================================
+              RECKY BUDGET
+          ====================================================== */}
+          {budgetSummary && (
+            <Card
+              className={`mb-6 overflow-hidden shadow-sm ${
+                budgetExceeded
+                  ? 'border-red-200'
+                  : 'border-slate-200/70'
+              }`}
+            >
+              <CardHeader
+                className={`border-b px-4 py-5 sm:px-6 ${
+                  budgetExceeded
+                    ? 'border-red-100 bg-red-50/60'
+                    : 'border-slate-100 bg-slate-50/60'
+                }`}
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-[#1A2B48]">
+                      Recky Budget
+                    </CardTitle>
+
+                    <CardDescription className="mt-1">
+                      Budget assigned by Finance/Admin for this recky.
+                    </CardDescription>
+                  </div>
+
+                  {budgetExceeded ? (
+                    <span
+                      className="
+                        inline-flex w-fit items-center
+                        rounded-full
+                        bg-red-100
+                        px-3 py-1
+                        text-xs font-semibold
+                        text-red-700
+                      "
+                    >
+                      Budget Exceeded
+                    </span>
+                  ) : (
+                    <span
+                      className="
+                        inline-flex w-fit items-center
+                        rounded-full
+                        bg-emerald-50
+                        px-3 py-1
+                        text-xs font-semibold
+                        text-emerald-700
+                      "
+                    >
+                      Within Budget
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                  {/* Assigned Budget */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Assigned Budget
+                    </p>
+
+                    <p className="mt-1 text-2xl font-semibold text-[#1A2B48]">
+                      Rs. {reckyBudget.toLocaleString()}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      Set by Finance/Admin
+                    </p>
+                  </div>
+
+                  {/* Spent */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Recky Spent
+                    </p>
+
+                    <p
+                      className={`mt-1 text-2xl font-semibold ${
+                        budgetExceeded
+                          ? 'text-red-600'
+                          : 'text-[#1A2B48]'
+                      }`}
+                    >
+                      Rs. {totalSpent.toLocaleString()}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      Synced expenses
+                    </p>
+                  </div>
+
+                  {/* Remaining */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Remaining
+                    </p>
+
+                    <p
+                      className={`mt-1 text-2xl font-semibold ${
+                        budgetRemaining < 0
+                          ? 'text-red-600'
+                          : 'text-[#1A2B48]'
+                      }`}
+                    >
+                      Rs. {budgetRemaining.toLocaleString()}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      {budgetRemaining < 0
+                        ? 'Amount over budget'
+                        : 'Available for recky'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className="mt-5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-medium text-slate-500">
+                      Budget Usage
+                    </p>
+
+                    <p
+                      className={`text-xs font-semibold ${
+                        budgetExceeded
+                          ? 'text-red-600'
+                          : 'text-[#3D6BB4]'
+                      }`}
+                    >
+                      {reckyBudget > 0
+                        ? `${((totalSpent / reckyBudget) * 100).toFixed(1)}%`
+                        : '0%'}
+                    </p>
+                  </div>
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        budgetExceeded
+                          ? 'bg-red-500'
+                          : 'bg-[#3D6BB4]'
+                      }`}
+                      style={{
+                        width: `${budgetPercentage}%`,
+                      }}
+                    />
+                  </div>
+
+                  {budgetExceeded && (
+                    <p className="mt-2 text-xs font-medium text-red-600">
+                      Recky expenses have exceeded the budget assigned by
+                      Finance.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* =====================================================
               SUMMARY
           ====================================================== */}
           <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
             <Card className="border-slate-200/70 bg-white shadow-sm">
               <CardContent className="p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -294,7 +515,13 @@ export default function ReckyManager() {
                   Total Spent
                 </p>
 
-                <p className="mt-1 break-words text-2xl font-semibold text-[#1A2B48]">
+                <p
+                  className={`mt-1 break-words text-2xl font-semibold ${
+                    budgetExceeded
+                      ? 'text-red-600'
+                      : 'text-[#1A2B48]'
+                  }`}
+                >
                   Rs. {totalSpent.toLocaleString()}
                 </p>
 
@@ -323,10 +550,7 @@ export default function ReckyManager() {
             <CardContent className="p-4 sm:p-6">
               <form
                 onSubmit={handleInvite}
-                className="
-                  flex flex-col gap-3
-                  sm:flex-row
-                "
+                className="flex flex-col gap-3 sm:flex-row"
               >
                 <div className="min-w-0 flex-1">
                   <Label
@@ -356,7 +580,9 @@ export default function ReckyManager() {
                     disabled={inviting}
                     className="h-11 w-full sm:w-auto"
                   >
-                    {inviting ? 'Inviting...' : 'Invite Planner'}
+                    {inviting
+                      ? 'Inviting...'
+                      : 'Invite Planner'}
                   </Button>
                 </div>
               </form>
@@ -446,6 +672,7 @@ export default function ReckyManager() {
                 className="space-y-5"
               >
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+
                   <div className="flex flex-col gap-2">
                     <Label
                       htmlFor="category"

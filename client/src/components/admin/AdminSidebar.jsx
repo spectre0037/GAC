@@ -25,6 +25,7 @@ const NAV_ITEMS = [
     roles: ["student"],
     section: "Explore",
   },
+  { to: '/admin/logistics', label: 'Logistics', roles: ['master_logistics', 'finance_master', 'super_admin'] },
   {
     to: "/my-tickets",
     label: "My Tickets",
@@ -67,13 +68,8 @@ const NAV_ITEMS = [
     roles: ["finance_master", "super_admin"],
     section: "Management",
   },
-  {
-    to: "/admin/logistics",
-    label: "Logistics",
-    icon: "⌁",
-    roles: ["master_logistics", "super_admin"],
-    section: "Management",
-  },
+  { to: '/admin/recky', label: 'Recky Planning', roles: ['finance_master', 'super_admin'] },
+  { to: '/admin/reports', label: 'Event Reports', roles: ['super_admin'] },
   {
     to: "/admin/budget-overview",
     label: "Budget Overview",

@@ -28,7 +28,8 @@ export const events = pgTable('events', {
   whatsappGroupLink: text('whatsapp_group_link'),
   // Only Event Coordinator can create/publish — enforced at API layer, tracked here for audit
   createdBy: integer('created_by').references(() => users.id),
-  
+  plannedBudget: decimal('planned_budget', { precision: 10, scale: 2 }).notNull().default('0'),
+  reckyPlannedBudget: decimal('recky_planned_budget', { precision: 10, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

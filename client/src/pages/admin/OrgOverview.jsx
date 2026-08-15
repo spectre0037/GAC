@@ -53,10 +53,7 @@ function getRegistrationStyle(key) {
     return STAT_STYLES.success;
   }
 
-  if (
-    normalized.includes("pending") ||
-    normalized.includes("waitlist")
-  ) {
+  if (normalized.includes("pending") || normalized.includes("waitlist")) {
     return STAT_STYLES.warning;
   }
 
@@ -99,26 +96,21 @@ export default function OrgOverview() {
     setError("");
 
     try {
-      const [eventsRes, regRes, budgetRes, logisticsRes] =
-        await Promise.all([
-          api.get("/events/admin/all"),
-          api.get(`/registrations/events/${eventId}/analytics`),
-          api.get(`/budget/events/${eventId}/summary`),
-          api.get(`/logistics/events/${eventId}`),
-        ]);
+      const [eventsRes, regRes, budgetRes, logisticsRes] = await Promise.all([
+        api.get("/events/admin/all"),
+        api.get(`/registrations/events/${eventId}/analytics`),
+        api.get(`/budget/events/${eventId}/summary`),
+        api.get(`/logistics/events/${eventId}`),
+      ]);
 
-      const matchedEvent = eventsRes.data.events.find(
-        (e) => e.id === eventId
-      );
+      const matchedEvent = eventsRes.data.events.find((e) => e.id === eventId);
 
       setEvent(matchedEvent || null);
       setRegSummary(regRes.data.summary);
       setBudgetSummary(budgetRes.data.summary);
       setLogisticsItems(logisticsRes.data.items);
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to load overview."
-      );
+      setError(err.response?.data?.message || "Failed to load overview.");
     }
   }
 
@@ -126,7 +118,6 @@ export default function OrgOverview() {
     <AdminLayout>
       <div className="min-h-screen px-5 py-8 md:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl">
-
           {/* -------------------------------------------------
               HEADER
           ------------------------------------------------- */}
@@ -143,16 +134,13 @@ export default function OrgOverview() {
                 </h1>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                  Read-only visibility across events, registrations,
-                  budget, and logistics.
+                  Read-only visibility across events, registrations, budget, and
+                  logistics.
                 </p>
               </div>
 
               <div className="w-full md:w-auto">
-                <EventPicker
-                  selectedEventId={eventId}
-                  onSelect={setEventId}
-                />
+                <EventPicker selectedEventId={eventId} onSelect={setEventId} />
               </div>
             </div>
           </div>
@@ -166,9 +154,7 @@ export default function OrgOverview() {
                 !
               </div>
 
-              <p className="text-sm text-red-700">
-                {error}
-              </p>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
@@ -204,7 +190,6 @@ export default function OrgOverview() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-
               {/* -------------------------------------------------
                   EVENT INFORMATION
               ------------------------------------------------- */}
@@ -228,13 +213,9 @@ export default function OrgOverview() {
                         <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-400">
                           <span>{event.location}</span>
                           <span>·</span>
-                          <span>
-                            Capacity: {event.capacity}
-                          </span>
+                          <span>Capacity: {event.capacity}</span>
                           <span>·</span>
-                          <span>
-                            Rs. {event.ticketPrice}
-                          </span>
+                          <span>Rs. {event.ticketPrice}</span>
                         </div>
                       </div>
                     </div>
@@ -270,21 +251,19 @@ export default function OrgOverview() {
                     <span className="rounded-full bg-[#EBF2F2] px-3 py-1.5 text-[10px] font-medium text-slate-500">
                       {Object.values(regSummary).reduce(
                         (total, value) =>
-                          typeof value === "number"
-                            ? total + value
-                            : total,
-                        0
+                          typeof value === "number" ? total + value : total,
+                        0,
                       )}{" "}
                       records
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                    {Object.entries(regSummary).map(
-                      ([key, value]) => {
-                        const style = getRegistrationStyle(key);
+                    {Object.entries(regSummary).map(([key, value]) => {
+                      const style = getRegistrationStyle(key);
 
-                        return (
+                      return (
+                        <>
                           <Card
                             key={key}
                             className="rounded-2xl border-0 bg-white shadow-sm ring-1 ring-slate-200/70"
@@ -311,9 +290,19 @@ export default function OrgOverview() {
                               </div>
                             </CardContent>
                           </Card>
-                        );
-                      }
-                    )}
+                          <Card>
+                            <CardContent className="p-3 text-center">
+                              <p className="text-xl font-semibold">
+                                Rs. {summary.onEventTotal}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                On-Event
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </>
+                      );
+                    })}
                   </div>
                 </section>
               )}
@@ -482,11 +471,9 @@ export default function OrgOverview() {
 
                             <div className="md:text-right">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                                  getLogisticsStatusStyle(
-                                    item.status
-                                  )
-                                }`}
+                                className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${getLogisticsStatusStyle(
+                                  item.status,
+                                )}`}
                               >
                                 {item.status.replace("_", " ")}
                               </span>
@@ -507,9 +494,7 @@ export default function OrgOverview() {
                   Organization data is provided for read-only visibility.
                 </span>
 
-                <span>
-                  GIKI Adventure Club · Admin Portal
-                </span>
+                <span>GIKI Adventure Club · Admin Portal</span>
               </div>
             </div>
           )}

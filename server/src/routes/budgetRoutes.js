@@ -31,6 +31,12 @@ router.patch(
   upload.single('receipt'),
   attachLineItemReceipt
 );
+router.patch(
+  '/:id/receipt',
+  requireRole('finance_master', 'master_logistics', 'super_admin'),
+  upload.single('receipt'),
+  attachLineItemReceipt
+);
 router.post(
   '/events/:eventId',
   requireRole('finance_master', 'master_logistics', 'super_admin'),

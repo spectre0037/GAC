@@ -89,7 +89,7 @@ export const listMyReckyAssignments = asyncHandler(async (req, res) => {
 // Guard: only a coordinator/super_admin OR the actively-assigned recky planner
 // for this specific event can log expenses against it.
 async function assertCanLogExpense(userId, userRole, eventId) {
-  if (userRole === 'event_coordinator' || userRole === 'super_admin') return true;
+  if (['event_coordinator', 'finance_master', 'super_admin'].includes(userRole)) return true;
 
   const [assignment] = await db
     .select()

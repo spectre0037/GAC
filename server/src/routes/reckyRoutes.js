@@ -18,12 +18,12 @@ router.get('/my-assignments', listMyReckyAssignments);
 
 router.post(
   '/events/:eventId/assign',
-  requireRole('event_coordinator', 'super_admin'),
+  requireRole('event_coordinator', 'finance_master', 'super_admin'),
   assignReckyPlanner
 );
 router.get(
   '/events/:eventId/assignments',
-  requireRole('event_coordinator', 'super_admin'),
+  requireRole('event_coordinator', 'finance_master', 'super_admin'),
   listReckyAssignmentsForEvent
 );
 router.patch('/expenses/:expenseId/receipt', upload.single('receipt'), attachReckyExpenseReceipt);

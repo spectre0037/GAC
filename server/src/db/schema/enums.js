@@ -53,6 +53,7 @@ export const verificationStatusEnum = pgEnum('verification_status', [
 
 export const budgetPhaseEnum = pgEnum('budget_phase', [
   'pre_event',
+  'on_event',
   'post_event',
 ]);
 
